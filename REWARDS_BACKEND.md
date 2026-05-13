@@ -11,6 +11,13 @@ UPSTASH_REDIS_REST_URL=https://your-redis-url.upstash.io
 UPSTASH_REDIS_REST_TOKEN=your_upstash_token
 ```
 
+The backend also accepts Vercel Marketplace's generated Upstash names:
+
+```env
+UPSTASH_REDIS_REST_KV_REST_API_URL=...
+UPSTASH_REDIS_REST_KV_REST_API_TOKEN=...
+```
+
 Set this in the mobile app build environment:
 
 ```env
