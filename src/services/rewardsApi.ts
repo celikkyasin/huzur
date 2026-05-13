@@ -29,6 +29,14 @@ export type RewardConfig = {
   prizeTitle: string;
   prizeDescription: string;
   prizeImageUrl: string;
+  prizes: RewardPrize[];
+};
+
+export type RewardPrize = {
+  rank: number;
+  title: string;
+  description: string;
+  imageUrl: string;
 };
 
 export type RewardClaimPayload = {

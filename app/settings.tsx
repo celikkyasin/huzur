@@ -18,7 +18,7 @@ import type { SettingsItem } from "@/types";
 
 const THEME_STORAGE_KEY = "huzur.settings.theme";
 const LANGUAGE_STORAGE_KEY = "huzur.settings.language";
-const APP_VERSION = "1.0.18";
+const APP_VERSION = "1.0.19";
 
 type ThemeMode = "Aydınlık" | "Koyu";
 type LanguageMode = "Türkçe" | "English";
@@ -72,8 +72,8 @@ export default function SettingsScreen() {
     .sort((first, second) => second.points - first.points)
     .slice(0, 5);
   const currentRank = leaderboard.findIndex((item) => item.isCurrentUser) + 1;
-  const topLeaderboardItem = leaderboard[0];
-  const isMonthlyWinner = Boolean(rewardConfig?.isActive && topLeaderboardItem?.isCurrentUser && monthlyPoints >= (rewardConfig.minimumMonthlyPoints || 0));
+  const currentPrize = rewardConfig?.prizes.find((prize) => prize.rank === currentRank);
+  const isMonthlyWinner = Boolean(rewardConfig?.isActive && currentPrize && currentRank <= 2 && monthlyPoints >= (rewardConfig.minimumMonthlyPoints || 0));
   const lastSyncLabel = lastSyncedAt ? new Date(lastSyncedAt).toLocaleTimeString("tr-TR", { hour: "2-digit", minute: "2-digit" }) : "";
 
   useEffect(() => {
@@ -338,19 +338,30 @@ export default function SettingsScreen() {
 
         {rewardConfig ? (
           <View style={[styles.prizePanel, !rewardConfig.isActive && styles.prizePanelMuted]}>
-            {rewardConfig.prizeImageUrl ? <Image source={{ uri: rewardConfig.prizeImageUrl }} style={styles.prizeImage} resizeMode="cover" /> : null}
             <View style={styles.prizeCopy}>
               <View style={styles.prizeTitleRow}>
                 <Ionicons name={rewardConfig.isActive ? "gift" : "pause-circle"} size={18} color={colors.emerald} />
-                <Text style={styles.prizeTitle}>{rewardConfig.isActive ? rewardConfig.prizeTitle : "Odul sistemi pasif"}</Text>
+                <Text style={styles.prizeTitle}>{rewardConfig.isActive ? "Bu Ayin Odulleri" : "Odul sistemi pasif"}</Text>
               </View>
               <Text style={styles.prizeSubtitle}>
-                {rewardConfig.isActive
-                  ? `${rewardConfig.prizeDescription} Minimum ${rewardConfig.minimumMonthlyPoints} puan gerekir.`
-                  : "Bu ay odul basvurusu kapali. Puanlar yine tabloda birikir."}
+                {rewardConfig.isActive ? `Ay sonunda ilk iki kullanici odul kazanir. Minimum ${rewardConfig.minimumMonthlyPoints} puan gerekir.` : "Bu ay odul basvurusu kapali. Puanlar yine tabloda birikir."}
               </Text>
-              {isMonthlyWinner ? <PrimaryButton label="Odulunu Al" icon="gift" style={styles.claimButton} onPress={() => setClaimFormVisible(true)} /> : null}
             </View>
+            {rewardConfig.isActive ? (
+              <View style={styles.prizeList}>
+                {rewardConfig.prizes.map((prize) => (
+                  <View key={`${prize.rank}-${prize.title}`} style={[styles.prizeItem, currentRank === prize.rank && styles.prizeItemActive]}>
+                    {prize.imageUrl ? <Image source={{ uri: prize.imageUrl }} style={styles.prizeItemImage} resizeMode="cover" /> : <View style={styles.prizeItemImageFallback}><Ionicons name="gift" size={24} color={colors.emerald} /></View>}
+                    <View style={styles.prizeItemCopy}>
+                      <Text style={styles.prizeItemRank}>{prize.rank}. Odul</Text>
+                      <Text style={styles.prizeItemTitle}>{prize.title}</Text>
+                      <Text style={styles.prizeItemDescription}>{prize.description}</Text>
+                    </View>
+                  </View>
+                ))}
+              </View>
+            ) : null}
+            {isMonthlyWinner ? <PrimaryButton label="Odulunu Al" icon="gift" style={styles.claimButton} onPress={() => setClaimFormVisible(true)} /> : null}
           </View>
         ) : null}
 
@@ -406,7 +417,7 @@ export default function SettingsScreen() {
             <View style={styles.claimModalTop}>
               <View style={styles.claimModalCopy}>
                 <Text style={styles.claimTitle}>Odul teslim bilgileri</Text>
-                <Text style={styles.claimSubtitle}>Kod: {userCode}</Text>
+                <Text style={styles.claimSubtitle}>{currentRank}. sira: {currentPrize?.title || "Odul"} • Kod: {userCode}</Text>
               </View>
               <Pressable accessibilityRole="button" onPress={() => setClaimFormVisible(false)} style={styles.modalCloseButton}>
                 <Ionicons name="close" size={20} color={colors.emerald} />
@@ -695,11 +706,6 @@ const styles = StyleSheet.create({
   prizePanelMuted: {
     opacity: 0.78
   },
-  prizeImage: {
-    width: "100%",
-    height: 150,
-    backgroundColor: colors.emeraldSoft
-  },
   prizeCopy: {
     padding: 14
   },
@@ -723,7 +729,66 @@ const styles = StyleSheet.create({
     fontWeight: "700"
   },
   claimButton: {
-    marginTop: 12
+    marginHorizontal: 14,
+    marginTop: 12,
+    marginBottom: 14
+  },
+  prizeList: {
+    gap: 10,
+    paddingHorizontal: 14,
+    paddingBottom: 14
+  },
+  prizeItem: {
+    minHeight: 92,
+    borderRadius: radii.md,
+    backgroundColor: colors.white,
+    borderWidth: 1,
+    borderColor: colors.line,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+    padding: 10
+  },
+  prizeItemActive: {
+    borderColor: colors.gold,
+    backgroundColor: colors.goldSoft
+  },
+  prizeItemImage: {
+    width: 72,
+    height: 72,
+    borderRadius: radii.sm,
+    backgroundColor: colors.emeraldSoft
+  },
+  prizeItemImageFallback: {
+    width: 72,
+    height: 72,
+    borderRadius: radii.sm,
+    backgroundColor: colors.emeraldSoft,
+    alignItems: "center",
+    justifyContent: "center"
+  },
+  prizeItemCopy: {
+    flex: 1,
+    minWidth: 0
+  },
+  prizeItemRank: {
+    color: colors.gold,
+    fontSize: 11,
+    fontWeight: "900"
+  },
+  prizeItemTitle: {
+    color: colors.emerald,
+    fontSize: 15,
+    lineHeight: 20,
+    marginTop: 2,
+    fontWeight: "900"
+  },
+  prizeItemDescription: {
+    color: colors.muted,
+    fontSize: 11,
+    lineHeight: 16,
+    marginTop: 3,
+    fontWeight: "700"
   },
   rewardRules: {
     flexDirection: "row",

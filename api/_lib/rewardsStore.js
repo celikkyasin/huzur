@@ -6,7 +6,21 @@ const DEFAULT_REWARD_CONFIG = {
   minimumMonthlyPoints: 500,
   prizeTitle: "Ayın Huzur Ödülü",
   prizeDescription: "Ay içinde en çok puanı toplayan kullanıcı ödül kazanır.",
-  prizeImageUrl: ""
+  prizeImageUrl: "",
+  prizes: [
+    {
+      rank: 1,
+      title: "Kuran-i Kerim",
+      description: "Ay icinde en cok puani toplayan kullanici kazanir.",
+      imageUrl: ""
+    },
+    {
+      rank: 2,
+      title: "Seccade",
+      description: "Ay icinde en cok puani toplayan ikinci kullanici kazanir.",
+      imageUrl: ""
+    }
+  ]
 };
 function json(response, statusCode, body) {
   response.statusCode = statusCode;
@@ -128,6 +142,19 @@ function normalizeText(value, maxLength) {
   return value.trim().replace(/\s+/g, " ").slice(0, maxLength);
 }
 
+function normalizePrizes(value, fallback = DEFAULT_REWARD_CONFIG.prizes) {
+  const source = Array.isArray(value) && value.length > 0 ? value : fallback;
+
+  return source
+    .map((item, index) => ({
+      rank: index + 1,
+      title: normalizeText(item?.title, 80) || fallback[index]?.title || `${index + 1}. Odul`,
+      description: normalizeText(item?.description, 180) || fallback[index]?.description || "",
+      imageUrl: normalizeText(item?.imageUrl, 500) || ""
+    }))
+    .slice(0, 2);
+}
+
 function normalizeKey(value, fallback) {
   return typeof value === "string" && /^[0-9]{4}-(W[0-9]{2}|[0-9]{2})$/.test(value) ? value : fallback;
 }
@@ -247,13 +274,29 @@ async function getLeaderboard(period, limit) {
 async function getRewardConfig() {
   const stored = await redisCommand("GET", "huzur:reward:config");
   const config = stored ? JSON.parse(stored) : {};
+  const legacyPrize = config.prizeTitle
+    ? [
+        {
+          rank: 1,
+          title: config.prizeTitle,
+          description: config.prizeDescription,
+          imageUrl: config.prizeImageUrl
+        },
+        DEFAULT_REWARD_CONFIG.prizes[1]
+      ]
+    : DEFAULT_REWARD_CONFIG.prizes;
+  const prizes = normalizePrizes(config.prizes, legacyPrize);
 
   return {
     ok: true,
     ...DEFAULT_REWARD_CONFIG,
     ...config,
     isActive: config.isActive !== false,
-    minimumMonthlyPoints: normalizePoints(config.minimumMonthlyPoints || DEFAULT_REWARD_CONFIG.minimumMonthlyPoints)
+    minimumMonthlyPoints: normalizePoints(config.minimumMonthlyPoints || DEFAULT_REWARD_CONFIG.minimumMonthlyPoints),
+    prizeTitle: prizes.map((prize) => `${prize.rank}. ${prize.title}`).join(" • "),
+    prizeDescription: "Ay icinde en cok puani toplayan ilk iki kullanici odul kazanir.",
+    prizeImageUrl: prizes[0]?.imageUrl || "",
+    prizes
   };
 }
 
@@ -263,13 +306,18 @@ async function setRewardConfig(payload) {
     isActive: typeof payload.isActive === "boolean" ? payload.isActive : current.isActive,
     mode: "monthly",
     minimumMonthlyPoints: normalizePoints(payload.minimumMonthlyPoints ?? current.minimumMonthlyPoints),
-    prizeTitle: normalizeText(payload.prizeTitle, 80) || current.prizeTitle,
-    prizeDescription: normalizeText(payload.prizeDescription, 180) || current.prizeDescription,
-    prizeImageUrl: normalizeText(payload.prizeImageUrl, 500) || ""
+    prizes: normalizePrizes(payload.prizes, current.prizes)
   };
 
   await redisCommand("SET", "huzur:reward:config", JSON.stringify(nextConfig));
-  return { ok: true, statusCode: 200, ...nextConfig };
+  return {
+    ok: true,
+    statusCode: 200,
+    ...nextConfig,
+    prizeTitle: nextConfig.prizes.map((prize) => `${prize.rank}. ${prize.title}`).join(" • "),
+    prizeDescription: "Ay icinde en cok puani toplayan ilk iki kullanici odul kazanir.",
+    prizeImageUrl: nextConfig.prizes[0]?.imageUrl || ""
+  };
 }
 
 async function submitRewardClaim(payload) {
@@ -289,11 +337,12 @@ async function submitRewardClaim(payload) {
   }
 
   const monthlyKey = `huzur:leaderboard:month:${monthKey}`;
-  const topResult = await redisCommand("ZREVRANGE", monthlyKey, 0, 0, "WITHSCORES");
-  const winnerCode = Array.isArray(topResult) ? topResult[0] : null;
-  const winnerPoints = normalizePoints(Array.isArray(topResult) ? topResult[1] : 0);
+  const topResult = await redisCommand("ZREVRANGE", monthlyKey, 0, 1, "WITHSCORES");
+  const leaders = mapLeaderboardResult(topResult);
+  const winner = leaders.find((item) => item.code === code);
+  const prize = winner ? config.prizes.find((item) => item.rank === winner.rank) : null;
 
-  if (winnerCode !== code || winnerPoints < config.minimumMonthlyPoints) {
+  if (!winner || !prize || winner.points < config.minimumMonthlyPoints) {
     return { ok: false, statusCode: 403, error: "User is not eligible for this month reward." };
   }
 
@@ -305,8 +354,9 @@ async function submitRewardClaim(payload) {
     contact,
     address,
     monthKey,
-    points: winnerPoints,
-    prizeTitle: config.prizeTitle,
+    rank: winner.rank,
+    points: winner.points,
+    prizeTitle: prize.title,
     submittedAt
   };
   const claimJson = JSON.stringify(claim);

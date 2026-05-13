@@ -66,9 +66,18 @@ Requires `x-admin-token: REWARDS_ADMIN_TOKEN`. Use this to turn the campaign on/
 {
   "isActive": true,
   "minimumMonthlyPoints": 500,
-  "prizeTitle": "Mayis ayi hediyesi",
-  "prizeDescription": "Ay icinde en cok puani toplayan kullanici kazanir.",
-  "prizeImageUrl": "https://example.com/prize.jpg"
+  "prizes": [
+    {
+      "title": "Kuran-i Kerim",
+      "description": "Ay birincisine hediye edilir.",
+      "imageUrl": "https://example.com/kuran.jpg"
+    },
+    {
+      "title": "Seccade",
+      "description": "Ay ikincisine hediye edilir.",
+      "imageUrl": "https://example.com/seccade.jpg"
+    }
+  ]
 }
 ```
 
