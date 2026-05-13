@@ -1,8 +1,5 @@
 const DEFAULT_LIMIT = 20;
 const MAX_LIMIT = 100;
-const WEEK_TTL_SECONDS = 60 * 60 * 24 * 90;
-const MONTH_TTL_SECONDS = 60 * 60 * 24 * 420;
-
 function json(response, statusCode, body) {
   response.statusCode = statusCode;
   response.setHeader("Content-Type", "application/json; charset=utf-8");
@@ -199,38 +196,12 @@ async function syncRewardScore(payload) {
   const monthlyPoints = normalizePoints(payload.monthlyPoints);
   const weekKey = normalizeKey(payload.weekKey, currentWeekKey);
   const monthKey = normalizeKey(payload.monthKey, currentMonthKey);
-  const now = new Date().toISOString();
-  const latestTransaction = payload.latestTransaction && typeof payload.latestTransaction === "object" ? payload.latestTransaction : {};
 
   await redisCommand("ZADD", "huzur:leaderboard:all", totalPoints, code);
   await redisCommand("ZADD", `huzur:leaderboard:week:${weekKey}`, weeklyPoints, code);
   await redisCommand("ZADD", `huzur:leaderboard:month:${monthKey}`, monthlyPoints, code);
-  await redisCommand("EXPIRE", `huzur:leaderboard:week:${weekKey}`, WEEK_TTL_SECONDS);
-  await redisCommand("EXPIRE", `huzur:leaderboard:month:${monthKey}`, MONTH_TTL_SECONDS);
-  await redisCommand(
-    "HSET",
-    `huzur:user:${code}`,
-    "code",
-    code,
-    "totalPoints",
-    totalPoints,
-    "weeklyPoints",
-    weeklyPoints,
-    "monthlyPoints",
-    monthlyPoints,
-    "weekKey",
-    weekKey,
-    "monthKey",
-    monthKey,
-    "lastSyncedAt",
-    now,
-    "latestRewardTitle",
-    typeof latestTransaction.title === "string" ? latestTransaction.title.slice(0, 80) : "",
-    "latestRewardPoints",
-    normalizePoints(latestTransaction.points)
-  );
 
-  return { ok: true, statusCode: 200, syncedAt: now };
+  return { ok: true, statusCode: 200, syncedAt: new Date().toISOString() };
 }
 
 async function getLeaderboard(period, limit) {
