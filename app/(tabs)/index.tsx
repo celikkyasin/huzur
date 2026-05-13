@@ -93,12 +93,6 @@ export default function HomeScreen() {
 
       <PrayerTimeCard locationLabel={displayPlace} prayerTimes={prayerTimes} isLocating={isLoadingLocation} isLoadingTimes={isLoadingPrayerTimes} sourceLabel={prayerTimesSource} />
 
-      <View style={styles.quickGrid}>
-        {quickActions.map((item) => (
-          <QuickActionCard key={item.title} title={item.title} icon={item.icon} onPress={() => router.push(item.route as never)} />
-        ))}
-      </View>
-
       <SectionTitle title="Vakitler" action="Tümü" onActionPress={() => router.push("/prayer-times" as never)} />
       <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.timesRow}>
         {visiblePrayerTimes.map((item) => (
@@ -108,6 +102,12 @@ export default function HomeScreen() {
           </View>
         ))}
       </ScrollView>
+
+      <View style={styles.quickGrid}>
+        {quickActions.map((item) => (
+          <QuickActionCard key={item.title} title={item.title} icon={item.icon} onPress={() => router.push(item.route as never)} />
+        ))}
+      </View>
 
       <View style={styles.ayahTitleRow}>
         <Text style={styles.ayahTitle}>Günün Ayeti</Text>
@@ -172,7 +172,8 @@ const styles = StyleSheet.create({
   },
   timesRow: {
     gap: 8,
-    paddingRight: 18
+    paddingRight: 18,
+    marginBottom: 10
   },
   timePill: {
     width: 78,
