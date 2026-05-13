@@ -1,0 +1,20 @@
+const { handleCors, json, readBody, submitRewardClaim } = require("../_lib/rewardsStore");
+
+module.exports = async function handler(request, response) {
+  if (handleCors(request, response)) {
+    return;
+  }
+
+  if (request.method !== "POST") {
+    json(response, 405, { ok: false, error: "Method not allowed." });
+    return;
+  }
+
+  try {
+    const payload = await readBody(request);
+    const result = await submitRewardClaim(payload);
+    json(response, result.statusCode, result);
+  } catch (error) {
+    json(response, 500, { ok: false, error: "Reward claim could not be saved.", detail: error instanceof Error ? error.message : "Unknown error" });
+  }
+};

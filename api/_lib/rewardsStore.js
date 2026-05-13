@@ -1,5 +1,13 @@
 const DEFAULT_LIMIT = 20;
 const MAX_LIMIT = 100;
+const DEFAULT_REWARD_CONFIG = {
+  isActive: true,
+  mode: "monthly",
+  minimumMonthlyPoints: 500,
+  prizeTitle: "Ayın Huzur Ödülü",
+  prizeDescription: "Ay içinde en çok puanı toplayan kullanıcı ödül kazanır.",
+  prizeImageUrl: ""
+};
 function json(response, statusCode, body) {
   response.statusCode = statusCode;
   response.setHeader("Content-Type", "application/json; charset=utf-8");
@@ -112,6 +120,14 @@ function normalizePoints(value) {
   return Math.max(0, Math.min(10000000, Math.floor(points)));
 }
 
+function normalizeText(value, maxLength) {
+  if (typeof value !== "string") {
+    return "";
+  }
+
+  return value.trim().replace(/\s+/g, " ").slice(0, maxLength);
+}
+
 function normalizeKey(value, fallback) {
   return typeof value === "string" && /^[0-9]{4}-(W[0-9]{2}|[0-9]{2})$/.test(value) ? value : fallback;
 }
@@ -152,6 +168,13 @@ function getLeaderboardKey(period) {
   }
 
   return `huzur:leaderboard:week:${getWeekKey()}`;
+}
+
+function isAdminRequest(request) {
+  const expectedToken = process.env.REWARDS_ADMIN_TOKEN?.trim();
+  const providedToken = request.headers["x-admin-token"] || request.query?.token;
+
+  return Boolean(expectedToken && providedToken && String(providedToken) === expectedToken);
 }
 
 function normalizePeriod(value) {
@@ -221,6 +244,97 @@ async function getLeaderboard(period, limit) {
   };
 }
 
+async function getRewardConfig() {
+  const stored = await redisCommand("GET", "huzur:reward:config");
+  const config = stored ? JSON.parse(stored) : {};
+
+  return {
+    ok: true,
+    ...DEFAULT_REWARD_CONFIG,
+    ...config,
+    isActive: config.isActive !== false,
+    minimumMonthlyPoints: normalizePoints(config.minimumMonthlyPoints || DEFAULT_REWARD_CONFIG.minimumMonthlyPoints)
+  };
+}
+
+async function setRewardConfig(payload) {
+  const current = await getRewardConfig();
+  const nextConfig = {
+    isActive: typeof payload.isActive === "boolean" ? payload.isActive : current.isActive,
+    mode: "monthly",
+    minimumMonthlyPoints: normalizePoints(payload.minimumMonthlyPoints ?? current.minimumMonthlyPoints),
+    prizeTitle: normalizeText(payload.prizeTitle, 80) || current.prizeTitle,
+    prizeDescription: normalizeText(payload.prizeDescription, 180) || current.prizeDescription,
+    prizeImageUrl: normalizeText(payload.prizeImageUrl, 500) || ""
+  };
+
+  await redisCommand("SET", "huzur:reward:config", JSON.stringify(nextConfig));
+  return { ok: true, statusCode: 200, ...nextConfig };
+}
+
+async function submitRewardClaim(payload) {
+  const config = await getRewardConfig();
+  const code = normalizeCode(payload.userCode);
+  const fullName = normalizeText(payload.fullName, 80);
+  const contact = normalizeText(payload.contact, 120);
+  const address = normalizeText(payload.address, 500);
+  const monthKey = getMonthKey();
+
+  if (!config.isActive) {
+    return { ok: false, statusCode: 403, error: "Reward campaign is not active." };
+  }
+
+  if (!code || fullName.length < 3 || contact.length < 5 || address.length < 10) {
+    return { ok: false, statusCode: 400, error: "Claim form is incomplete." };
+  }
+
+  const monthlyKey = `huzur:leaderboard:month:${monthKey}`;
+  const topResult = await redisCommand("ZREVRANGE", monthlyKey, 0, 0, "WITHSCORES");
+  const winnerCode = Array.isArray(topResult) ? topResult[0] : null;
+  const winnerPoints = normalizePoints(Array.isArray(topResult) ? topResult[1] : 0);
+
+  if (winnerCode !== code || winnerPoints < config.minimumMonthlyPoints) {
+    return { ok: false, statusCode: 403, error: "User is not eligible for this month reward." };
+  }
+
+  const submittedAt = new Date().toISOString();
+  const claim = {
+    id: `${monthKey}:${code}`,
+    userCode: code,
+    fullName,
+    contact,
+    address,
+    monthKey,
+    points: winnerPoints,
+    prizeTitle: config.prizeTitle,
+    submittedAt
+  };
+  const claimJson = JSON.stringify(claim);
+
+  await redisCommand("SET", `huzur:reward:claim:${monthKey}:${code}`, claimJson);
+  await redisCommand("LPUSH", `huzur:reward:claims:${monthKey}`, claimJson);
+
+  return { ok: true, statusCode: 200, claimId: claim.id };
+}
+
+async function getRewardClaims() {
+  const monthKey = getMonthKey();
+  const result = await redisCommand("LRANGE", `huzur:reward:claims:${monthKey}`, 0, 100);
+  const claims = Array.isArray(result)
+    ? result
+        .map((item) => {
+          try {
+            return JSON.parse(item);
+          } catch {
+            return null;
+          }
+        })
+        .filter(Boolean)
+    : [];
+
+  return { ok: true, monthKey, claims };
+}
+
 async function removeRewardUser(code) {
   const normalizedCode = normalizeCode(code);
 
@@ -244,10 +358,15 @@ async function removeRewardUser(code) {
 }
 
 module.exports = {
+  getRewardClaims,
+  getRewardConfig,
   getLeaderboard,
   handleCors,
+  isAdminRequest,
   json,
   readBody,
   removeRewardUser,
+  setRewardConfig,
+  submitRewardClaim,
   syncRewardScore
 };

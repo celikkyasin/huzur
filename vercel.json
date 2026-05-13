@@ -9,6 +9,18 @@
       "destination": "/api/rewards/cleanup-test"
     },
     {
+      "source": "/rewards/config",
+      "destination": "/api/rewards/config"
+    },
+    {
+      "source": "/rewards/claim",
+      "destination": "/api/rewards/claim"
+    },
+    {
+      "source": "/rewards/claims",
+      "destination": "/api/rewards/claims"
+    },
+    {
       "source": "/leaderboard",
       "destination": "/api/leaderboard"
     }

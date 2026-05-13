@@ -9,6 +9,7 @@ Set these on the hosting provider:
 ```env
 UPSTASH_REDIS_REST_URL=https://your-redis-url.upstash.io
 UPSTASH_REDIS_REST_TOKEN=your_upstash_token
+REWARDS_ADMIN_TOKEN=choose_a_private_admin_token
 ```
 
 The backend also accepts Vercel Marketplace's generated Upstash names:
@@ -52,3 +53,29 @@ Supported periods: `weekly`, `monthly`, `all`.
   ]
 }
 ```
+
+`GET /rewards/config`
+
+Returns the active monthly reward settings shown in the app.
+
+`POST /rewards/config`
+
+Requires `x-admin-token: REWARDS_ADMIN_TOKEN`. Use this to turn the campaign on/off and change the remote prize image without publishing a new app build.
+
+```json
+{
+  "isActive": true,
+  "minimumMonthlyPoints": 500,
+  "prizeTitle": "Mayis ayi hediyesi",
+  "prizeDescription": "Ay icinde en cok puani toplayan kullanici kazanir.",
+  "prizeImageUrl": "https://example.com/prize.jpg"
+}
+```
+
+`POST /rewards/claim`
+
+The monthly winner submits delivery details from the app. The backend checks that the user is currently first and has at least the configured minimum monthly points.
+
+`GET /rewards/claims?token=REWARDS_ADMIN_TOKEN`
+
+Returns the current month's submitted winner delivery details for the app owner.

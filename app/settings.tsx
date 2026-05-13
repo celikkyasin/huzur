@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Alert, Linking, Pressable, StyleSheet, Switch, Text, View } from "react-native";
+import { ActivityIndicator, Alert, Image, Linking, Modal, Pressable, StyleSheet, Switch, Text, TextInput, View } from "react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
@@ -10,7 +10,7 @@ import { PrimaryButton } from "@/components/ui/PrimaryButton";
 import { ScreenContainer } from "@/components/ui/ScreenContainer";
 import { SectionTitle } from "@/components/ui/SectionTitle";
 import { getPrayerNotificationsEnabled, setPrayerNotificationsEnabled } from "@/services/prayerNotifications";
-import type { RemoteLeaderboardItem } from "@/services/rewardsApi";
+import { fetchRewardConfig, submitRewardClaim, type RemoteLeaderboardItem, type RewardConfig } from "@/services/rewardsApi";
 import { usePrayerTimesStore } from "@/store/prayerTimesStore";
 import { useRewardStore } from "@/store/rewardStore";
 import { colors, radii, shadows, typography } from "@/theme";
@@ -18,7 +18,7 @@ import type { SettingsItem } from "@/types";
 
 const THEME_STORAGE_KEY = "huzur.settings.theme";
 const LANGUAGE_STORAGE_KEY = "huzur.settings.language";
-const APP_VERSION = "1.0.17";
+const APP_VERSION = "1.0.18";
 
 type ThemeMode = "Aydınlık" | "Koyu";
 type LanguageMode = "Türkçe" | "English";
@@ -48,6 +48,12 @@ export default function SettingsScreen() {
   const [isUpdatingNotifications, setIsUpdatingNotifications] = useState(false);
   const [themeMode, setThemeMode] = useState<ThemeMode>("Aydınlık");
   const [languageMode, setLanguageMode] = useState<LanguageMode>("Türkçe");
+  const [rewardConfig, setRewardConfig] = useState<RewardConfig | null>(null);
+  const [claimFormVisible, setClaimFormVisible] = useState(false);
+  const [isSubmittingClaim, setIsSubmittingClaim] = useState(false);
+  const [claimFullName, setClaimFullName] = useState("");
+  const [claimContact, setClaimContact] = useState("");
+  const [claimAddress, setClaimAddress] = useState("");
   const prayerTimes = usePrayerTimesStore((state) => state.times);
   const userCode = useRewardStore((state) => state.userCode);
   const totalPoints = useRewardStore((state) => state.totalPoints);
@@ -62,10 +68,12 @@ export default function SettingsScreen() {
   const syncRewards = useRewardStore((state) => state.syncRewards);
   const loadLeaderboard = useRewardStore((state) => state.loadLeaderboard);
   const leaderboardSource = remoteLeaderboard.length > 0 ? remoteLeaderboard : leaderboardSamples;
-  const leaderboard: LeaderboardItem[] = [...leaderboardSource.filter((item) => item.code !== userCode), { code: userCode, points: weeklyPoints, isCurrentUser: true }]
+  const leaderboard: LeaderboardItem[] = [...leaderboardSource.filter((item) => item.code !== userCode), { code: userCode, points: monthlyPoints, isCurrentUser: true }]
     .sort((first, second) => second.points - first.points)
     .slice(0, 5);
   const currentRank = leaderboard.findIndex((item) => item.isCurrentUser) + 1;
+  const topLeaderboardItem = leaderboard[0];
+  const isMonthlyWinner = Boolean(rewardConfig?.isActive && topLeaderboardItem?.isCurrentUser && monthlyPoints >= (rewardConfig.minimumMonthlyPoints || 0));
   const lastSyncLabel = lastSyncedAt ? new Date(lastSyncedAt).toLocaleTimeString("tr-TR", { hour: "2-digit", minute: "2-digit" }) : "";
 
   useEffect(() => {
@@ -81,11 +89,21 @@ export default function SettingsScreen() {
       }
     });
     void syncRewards();
-    void loadLeaderboard();
+    void loadLeaderboard("monthly");
+    fetchRewardConfig().then((config) => {
+      if (config) {
+        setRewardConfig(config);
+      }
+    });
 
     const leaderboardTimer = setInterval(() => {
       void syncRewards();
-      void loadLeaderboard();
+      void loadLeaderboard("monthly");
+      fetchRewardConfig().then((config) => {
+        if (config) {
+          setRewardConfig(config);
+        }
+      });
     }, 30000);
 
     return () => clearInterval(leaderboardTimer);
@@ -93,6 +111,39 @@ export default function SettingsScreen() {
 
   const showProfileActions = () => {
     Alert.alert("Profil", "Profil ayarları hesap sistemiyle birlikte açılacak. Bu kart konum yenileme veya izin işlemi başlatmaz.", [{ text: "Tamam" }]);
+  };
+
+  const sendRewardClaim = async () => {
+    if (isSubmittingClaim) {
+      return;
+    }
+
+    if (claimFullName.trim().length < 3 || claimContact.trim().length < 5 || claimAddress.trim().length < 10) {
+      Alert.alert("Eksik bilgi", "Lutfen ad soyad, telefon/e-posta ve teslimat adresini doldurun.");
+      return;
+    }
+
+    setIsSubmittingClaim(true);
+
+    const result = await submitRewardClaim({
+      userCode,
+      fullName: claimFullName,
+      contact: claimContact,
+      address: claimAddress
+    });
+
+    setIsSubmittingClaim(false);
+
+    if (result?.ok) {
+      setClaimFormVisible(false);
+      setClaimFullName("");
+      setClaimContact("");
+      setClaimAddress("");
+      Alert.alert("Basvurun alindi", "Odul teslim bilgilerin bize ulasti. Kazanan kontrolunden sonra seninle iletisime gecilecek.");
+      return;
+    }
+
+    Alert.alert("Basvuru gonderilemedi", "Odul basvurusu su anda kaydedilemedi. Puan tablosunu yenileyip tekrar deneyin.");
   };
 
   const toggleNotifications = async (nextValue = !notificationsEnabled) => {
@@ -272,13 +323,36 @@ export default function SettingsScreen() {
             accessibilityRole="button"
             onPress={() => {
               void syncRewards();
-              void loadLeaderboard();
+              void loadLeaderboard("monthly");
+              fetchRewardConfig().then((config) => {
+                if (config) {
+                  setRewardConfig(config);
+                }
+              });
             }}
             style={({ pressed }) => [styles.rewardRefreshButton, pressed && styles.pressed]}
           >
             <Ionicons name="refresh" size={18} color={colors.emerald} />
           </Pressable>
         </View>
+
+        {rewardConfig ? (
+          <View style={[styles.prizePanel, !rewardConfig.isActive && styles.prizePanelMuted]}>
+            {rewardConfig.prizeImageUrl ? <Image source={{ uri: rewardConfig.prizeImageUrl }} style={styles.prizeImage} resizeMode="cover" /> : null}
+            <View style={styles.prizeCopy}>
+              <View style={styles.prizeTitleRow}>
+                <Ionicons name={rewardConfig.isActive ? "gift" : "pause-circle"} size={18} color={colors.emerald} />
+                <Text style={styles.prizeTitle}>{rewardConfig.isActive ? rewardConfig.prizeTitle : "Odul sistemi pasif"}</Text>
+              </View>
+              <Text style={styles.prizeSubtitle}>
+                {rewardConfig.isActive
+                  ? `${rewardConfig.prizeDescription} Minimum ${rewardConfig.minimumMonthlyPoints} puan gerekir.`
+                  : "Bu ay odul basvurusu kapali. Puanlar yine tabloda birikir."}
+              </Text>
+              {isMonthlyWinner ? <PrimaryButton label="Odulunu Al" icon="gift" style={styles.claimButton} onPress={() => setClaimFormVisible(true)} /> : null}
+            </View>
+          </View>
+        ) : null}
 
         <View style={styles.rewardRules}>
           <View style={styles.rewardRule}>
@@ -325,6 +399,35 @@ export default function SettingsScreen() {
           </View>
         )}
       </Card>
+
+      <Modal visible={claimFormVisible} transparent animationType="fade" onRequestClose={() => setClaimFormVisible(false)}>
+        <View style={styles.modalBackdrop}>
+          <View style={styles.claimModal}>
+            <View style={styles.claimModalTop}>
+              <View style={styles.claimModalCopy}>
+                <Text style={styles.claimTitle}>Odul teslim bilgileri</Text>
+                <Text style={styles.claimSubtitle}>Kod: {userCode}</Text>
+              </View>
+              <Pressable accessibilityRole="button" onPress={() => setClaimFormVisible(false)} style={styles.modalCloseButton}>
+                <Ionicons name="close" size={20} color={colors.emerald} />
+              </Pressable>
+            </View>
+            <TextInput value={claimFullName} onChangeText={setClaimFullName} placeholder="Ad soyad" placeholderTextColor={colors.muted} style={styles.claimInput} />
+            <TextInput value={claimContact} onChangeText={setClaimContact} placeholder="Telefon veya e-posta" placeholderTextColor={colors.muted} keyboardType="email-address" style={styles.claimInput} />
+            <TextInput
+              value={claimAddress}
+              onChangeText={setClaimAddress}
+              placeholder="Teslimat adresi"
+              placeholderTextColor={colors.muted}
+              multiline
+              style={[styles.claimInput, styles.claimAddressInput]}
+            />
+            <Pressable accessibilityRole="button" disabled={isSubmittingClaim} onPress={() => void sendRewardClaim()} style={({ pressed }) => [styles.claimSubmitButton, pressed && styles.pressed]}>
+              {isSubmittingClaim ? <ActivityIndicator color={colors.white} /> : <Text style={styles.claimSubmitText}>Gonder</Text>}
+            </Pressable>
+          </View>
+        </View>
+      </Modal>
 
       <SectionTitle title="Dil Seçimi" />
       <Card style={styles.languageCard}>
@@ -581,6 +684,47 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center"
   },
+  prizePanel: {
+    marginTop: 14,
+    borderRadius: radii.lg,
+    backgroundColor: colors.paper,
+    borderWidth: 1,
+    borderColor: "rgba(7,94,71,0.12)",
+    overflow: "hidden"
+  },
+  prizePanelMuted: {
+    opacity: 0.78
+  },
+  prizeImage: {
+    width: "100%",
+    height: 150,
+    backgroundColor: colors.emeraldSoft
+  },
+  prizeCopy: {
+    padding: 14
+  },
+  prizeTitleRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8
+  },
+  prizeTitle: {
+    flex: 1,
+    color: colors.emerald,
+    fontSize: 15,
+    lineHeight: 20,
+    fontWeight: "900"
+  },
+  prizeSubtitle: {
+    color: colors.muted,
+    fontSize: 12,
+    lineHeight: 18,
+    marginTop: 7,
+    fontWeight: "700"
+  },
+  claimButton: {
+    marginTop: 12
+  },
   rewardRules: {
     flexDirection: "row",
     flexWrap: "wrap",
@@ -790,5 +934,80 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: "900",
     flexShrink: 1
+  },
+  modalBackdrop: {
+    flex: 1,
+    backgroundColor: "rgba(8,24,20,0.52)",
+    alignItems: "center",
+    justifyContent: "center",
+    padding: 20
+  },
+  claimModal: {
+    width: "100%",
+    maxWidth: 430,
+    borderRadius: radii.lg,
+    backgroundColor: colors.paper,
+    padding: 18,
+    ...shadows.card
+  },
+  claimModalTop: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+    marginBottom: 14
+  },
+  claimModalCopy: {
+    flex: 1,
+    minWidth: 0
+  },
+  claimTitle: {
+    color: colors.emerald,
+    fontSize: 18,
+    lineHeight: 24,
+    fontWeight: "900"
+  },
+  claimSubtitle: {
+    color: colors.muted,
+    fontSize: 12,
+    marginTop: 2,
+    fontWeight: "800"
+  },
+  modalCloseButton: {
+    width: 38,
+    height: 38,
+    borderRadius: radii.round,
+    backgroundColor: colors.emeraldSoft,
+    alignItems: "center",
+    justifyContent: "center"
+  },
+  claimInput: {
+    minHeight: 48,
+    borderRadius: radii.md,
+    borderWidth: 1,
+    borderColor: colors.line,
+    backgroundColor: colors.white,
+    color: colors.ink,
+    paddingHorizontal: 13,
+    paddingVertical: 10,
+    fontSize: 14,
+    fontWeight: "700",
+    marginTop: 10
+  },
+  claimAddressInput: {
+    minHeight: 96,
+    textAlignVertical: "top"
+  },
+  claimSubmitButton: {
+    minHeight: 50,
+    borderRadius: radii.md,
+    backgroundColor: colors.emerald,
+    alignItems: "center",
+    justifyContent: "center",
+    marginTop: 14
+  },
+  claimSubmitText: {
+    color: colors.white,
+    fontSize: 15,
+    fontWeight: "900"
   }
 });

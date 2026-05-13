@@ -107,7 +107,7 @@ export const useRewardStore = create<RewardState>((set, get) => ({
   ...createDefaultState(),
   isHydrated: false,
   leaderboard: [],
-  leaderboardPeriod: "weekly",
+  leaderboardPeriod: "monthly",
   isSyncing: false,
   isRemoteLeaderboardEnabled: isRewardsApiConfigured(),
 

@@ -21,6 +21,23 @@ export type RewardSyncPayload = {
   latestTransaction?: RewardTransaction;
 };
 
+export type RewardConfig = {
+  ok?: boolean;
+  isActive: boolean;
+  mode: "monthly";
+  minimumMonthlyPoints: number;
+  prizeTitle: string;
+  prizeDescription: string;
+  prizeImageUrl: string;
+};
+
+export type RewardClaimPayload = {
+  userCode: string;
+  fullName: string;
+  contact: string;
+  address: string;
+};
+
 function hasRewardsApi() {
   return typeof REWARDS_API_URL === "string" && REWARDS_API_URL.trim().length > 0;
 }
@@ -69,6 +86,17 @@ export async function syncRewardScore(payload: RewardSyncPayload) {
 export async function fetchRewardLeaderboard(period: LeaderboardPeriod) {
   const result = await requestJson<{ items?: RemoteLeaderboardItem[] }>(`/leaderboard?period=${period}`);
   return Array.isArray(result?.items) ? result.items : null;
+}
+
+export async function fetchRewardConfig() {
+  return requestJson<RewardConfig>("/rewards/config");
+}
+
+export async function submitRewardClaim(payload: RewardClaimPayload) {
+  return requestJson<{ ok: boolean; claimId?: string; error?: string }>("/rewards/claim", {
+    method: "POST",
+    body: JSON.stringify(payload)
+  });
 }
 
 export function isRewardsApiConfigured() {
