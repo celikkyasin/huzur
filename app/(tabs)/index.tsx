@@ -120,6 +120,9 @@ export default function HomeScreen() {
                 <Ionicons name="sparkles" size={18} color={colors.gold} />
                 <Text style={styles.cardKicker}>Günün Ayeti</Text>
               </View>
+              <Pressable onPress={shareDailyAyah} disabled={isSharingAyah} style={({ pressed }) => [styles.shareIconButton, pressed && styles.pressed]} accessibilityRole="button" accessibilityLabel="Günün ayetini paylaş">
+                <Ionicons name={isSharingAyah ? "hourglass-outline" : "share-social"} size={20} color={colors.emerald} />
+              </Pressable>
             </View>
             <Text style={styles.arabic}>{ayah.arabic}</Text>
             <View style={styles.goldLine} />
@@ -130,9 +133,6 @@ export default function HomeScreen() {
             </View>
           </Card>
         </ViewShot>
-        <Pressable onPress={shareDailyAyah} disabled={isSharingAyah} style={({ pressed }) => [styles.shareIconButton, pressed && styles.pressed]} accessibilityRole="button" accessibilityLabel="Günün ayetini paylaş">
-          <Ionicons name={isSharingAyah ? "hourglass-outline" : "share-social"} size={20} color={colors.emerald} />
-        </Pressable>
       </View>
     </ScreenContainer>
   );
@@ -223,12 +223,8 @@ const styles = StyleSheet.create({
     position: "relative"
   },
   shareIconButton: {
-    position: "absolute",
-    top: 12,
-    right: 12,
-    zIndex: 5,
-    width: 42,
-    height: 42,
+    width: 40,
+    height: 40,
     borderRadius: radii.round,
     backgroundColor: colors.emeraldSoft,
     borderWidth: 1,
