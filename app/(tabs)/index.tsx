@@ -130,11 +130,10 @@ export default function HomeScreen() {
             </View>
           </Card>
         </ViewShot>
+        <Pressable onPress={shareDailyAyah} disabled={isSharingAyah} style={({ pressed }) => [styles.shareIconButton, pressed && styles.pressed]} accessibilityRole="button" accessibilityLabel="Günün ayetini paylaş">
+          <Ionicons name={isSharingAyah ? "hourglass-outline" : "share-social"} size={20} color={colors.emerald} />
+        </Pressable>
       </View>
-      <Pressable onPress={shareDailyAyah} disabled={isSharingAyah} style={styles.shareButton} accessibilityRole="button" accessibilityLabel="Günün ayetini paylaş">
-        <Ionicons name={isSharingAyah ? "hourglass-outline" : "share-social"} size={20} color={colors.emerald} />
-        <Text style={styles.shareText}>{isSharingAyah ? "Hazırlanıyor" : "Paylaş"}</Text>
-      </Pressable>
     </ScreenContainer>
   );
 }
@@ -222,6 +221,20 @@ const styles = StyleSheet.create({
   ayahWrap: {
     position: "relative"
   },
+  shareIconButton: {
+    position: "absolute",
+    top: 12,
+    right: 12,
+    zIndex: 5,
+    width: 42,
+    height: 42,
+    borderRadius: radii.round,
+    backgroundColor: colors.emeraldSoft,
+    borderWidth: 1,
+    borderColor: "rgba(7,94,71,0.12)",
+    alignItems: "center",
+    justifyContent: "center"
+  },
   ayah: {
     minHeight: 136,
     backgroundColor: colors.white,
@@ -282,20 +295,7 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: "900"
   },
-  shareButton: {
-    alignSelf: "flex-end",
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 8,
-    borderRadius: radii.round,
-    backgroundColor: colors.emeraldSoft,
-    paddingHorizontal: 18,
-    paddingVertical: 13,
-    marginTop: 10
-  },
-  shareText: {
-    color: colors.emerald,
-    fontSize: 14,
-    fontWeight: "900"
+  pressed: {
+    opacity: 0.72
   }
 });
