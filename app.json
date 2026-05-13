@@ -1,0 +1,54 @@
+{
+  "expo": {
+    "name": "Huzur",
+    "slug": "huzur",
+    "scheme": "huzur",
+    "version": "1.0.11",
+    "orientation": "portrait",
+    "userInterfaceStyle": "light",
+    "ios": {
+      "supportsTablet": false,
+      "bundleIdentifier": "com.huzur.app"
+    },
+    "android": {
+      "package": "com.huzur.app",
+      "permissions": [
+        "INTERNET",
+        "ACCESS_COARSE_LOCATION",
+        "ACCESS_FINE_LOCATION"
+      ],
+      "adaptiveIcon": {
+        "backgroundColor": "#F8F4EA"
+      }
+    },
+    "plugins": [
+      "expo-router",
+      [
+        "expo-location",
+        {
+          "locationWhenInUsePermission": "Huzur; bulunduğunuz şehre göre namaz vakitlerini, kıble bilgisini ve yakındaki camileri göstermek için konumunuzu kullanır."
+        }
+      ],
+      [
+        "expo-notifications",
+        {
+          "sounds": [
+            "./assets/audio/adhan/adhan.ogg"
+          ]
+        }
+      ],
+      "expo-audio",
+      "expo-sharing",
+      [
+        "expo-media-library",
+        {
+          "photosPermission": "Huzur; Cuma mesajı görsellerini galerinize kaydetmek için fotoğraflarınıza erişim ister.",
+          "savePhotosPermission": "Huzur; Cuma mesajı görsellerini galerinize kaydetmek için izin ister."
+        }
+      ]
+    ],
+    "experiments": {
+      "typedRoutes": true
+    }
+  }
+}

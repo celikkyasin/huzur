@@ -1,0 +1,17 @@
+{
+  "rewrites": [
+    {
+      "source": "/rewards/sync",
+      "destination": "/api/rewards/sync"
+    },
+    {
+      "source": "/leaderboard",
+      "destination": "/api/leaderboard"
+    }
+  ],
+  "functions": {
+    "api/**/*.js": {
+      "maxDuration": 10
+    }
+  }
+}
