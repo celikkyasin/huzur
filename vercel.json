@@ -5,6 +5,10 @@
       "destination": "/api/rewards/sync"
     },
     {
+      "source": "/rewards/cleanup-test",
+      "destination": "/api/rewards/cleanup-test"
+    },
+    {
       "source": "/leaderboard",
       "destination": "/api/leaderboard"
     }
