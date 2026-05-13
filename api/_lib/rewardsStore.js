@@ -58,10 +58,14 @@ async function redisCommand(...command) {
   });
 
   if (!response.ok) {
-    throw new Error(`Redis command failed with ${response.status}.`);
+    const errorText = await response.text();
+    throw new Error(`Redis command failed with ${response.status}: ${errorText.slice(0, 200)}`);
   }
 
   const body = await response.json();
+  if (body.error) {
+    throw new Error(`Redis command failed: ${String(body.error).slice(0, 200)}`);
+  }
   return body.result;
 }
 

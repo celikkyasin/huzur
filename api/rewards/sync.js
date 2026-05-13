@@ -14,7 +14,7 @@ module.exports = async function handler(request, response) {
     const payload = await readBody(request);
     const result = await syncRewardScore(payload);
     json(response, result.statusCode, result);
-  } catch {
-    json(response, 500, { ok: false, error: "Reward score could not be synced." });
+  } catch (error) {
+    json(response, 500, { ok: false, error: "Reward score could not be synced.", detail: error instanceof Error ? error.message : "Unknown error" });
   }
 };
