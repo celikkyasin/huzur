@@ -68,14 +68,37 @@ function formatWalkingTime(distanceMeters: number) {
   return `${minutes} dk`;
 }
 
+function cleanText(value?: string) {
+  const text = value?.replace(/\s+/g, " ").trim();
+  return text && text.length > 1 ? text : undefined;
+}
+
 function buildAddress(tags: Record<string, string | undefined>) {
-  const parts = [tags["addr:neighbourhood"], tags["addr:street"], tags["addr:district"], tags["addr:city"]].filter(Boolean);
-  return parts.length ? parts.join(", ") : "Adres bilgisi yakında eklenecek";
+  const fullAddress = cleanText(tags["addr:full"]);
+
+  if (fullAddress) {
+    return fullAddress;
+  }
+
+  const street = cleanText(tags["addr:street"]);
+  const houseNumber = cleanText(tags["addr:housenumber"]);
+  const neighbourhood = cleanText(tags["addr:neighbourhood"]) || cleanText(tags["is_in:neighbourhood"]) || cleanText(tags["addr:suburb"]);
+  const district = cleanText(tags["addr:district"]) || cleanText(tags["addr:county"]);
+  const city = cleanText(tags["addr:city"]);
+  const streetLine = [street, houseNumber].filter(Boolean).join(" ");
+  const parts = [neighbourhood, streetLine, district, city].filter(Boolean);
+
+  return parts.length ? parts.slice(0, 3).join(", ") : "Haritada konumlu";
 }
 
 function cleanName(value?: string) {
-  const name = value?.replace(/\s+/g, " ").trim();
-  return name && name.length > 1 ? name : undefined;
+  const name = cleanText(value);
+
+  if (!name) {
+    return undefined;
+  }
+
+  return name.replace(/\bCami\b$/iu, "Camii").replace(/\bCamisi\b$/iu, "Camii");
 }
 
 function buildMosqueName(tags: Record<string, string | undefined>) {
@@ -90,13 +113,21 @@ function buildMosqueName(tags: Record<string, string | undefined>) {
     return directName;
   }
 
-  const neighbourhood = cleanName(tags["addr:neighbourhood"]) || cleanName(tags["is_in:neighbourhood"]) || cleanName(tags["addr:suburb"]);
+  const neighbourhood = cleanText(tags["addr:neighbourhood"]) || cleanText(tags["is_in:neighbourhood"]) || cleanText(tags["addr:suburb"]);
 
   if (neighbourhood) {
     return `${neighbourhood} Camii`;
   }
 
   return undefined;
+}
+
+function normalizeCachedMosque(mosque: Mosque): Mosque {
+  return {
+    ...mosque,
+    name: cleanName(mosque.name) || mosque.name,
+    address: mosque.address?.startsWith("Adres bilgisi") ? "Haritada konumlu" : mosque.address
+  };
 }
 
 function buildQuery(latitude: number, longitude: number) {
@@ -120,11 +151,12 @@ function buildCacheKey(latitude: number, longitude: number) {
 
 async function readCachedMosques(cacheKey: string) {
   const cachedValue = await AsyncStorage.getItem(cacheKey);
-  return cachedValue ? (JSON.parse(cachedValue) as Mosque[]) : undefined;
+  const cachedMosques = cachedValue ? (JSON.parse(cachedValue) as Mosque[]) : undefined;
+  return cachedMosques?.map(normalizeCachedMosque);
 }
 
 async function writeCachedMosques(cacheKey: string, mosques: Mosque[]) {
-  await AsyncStorage.setItem(cacheKey, JSON.stringify(mosques));
+  await AsyncStorage.setItem(cacheKey, JSON.stringify(mosques.map(normalizeCachedMosque)));
 }
 
 function mapElements(elements: OverpassElement[], latitude: number, longitude: number) {
@@ -145,6 +177,7 @@ function mapElements(elements: OverpassElement[], latitude: number, longitude: n
       if (!name) {
         return undefined;
       }
+
       const distanceMeters = calculateDistanceMeters(latitude, longitude, mosqueLatitude, mosqueLongitude);
       const dedupeKey = `${name.toLocaleLowerCase("tr-TR")}-${mosqueLatitude.toFixed(4)}-${mosqueLongitude.toFixed(4)}`;
 
@@ -208,7 +241,7 @@ export async function getCachedNearbyMosques(location: MosqueLocation): Promise<
 export async function fetchNearbyMosques(location: MosqueLocation): Promise<NearbyMosquesResult> {
   if (typeof location.latitude !== "number" || typeof location.longitude !== "number") {
     return {
-      mosques: fallbackMosques,
+      mosques: fallbackMosques.map(normalizeCachedMosque),
       sourceLabel: "Örnek camiler"
     };
   }
@@ -261,7 +294,7 @@ export async function fetchNearbyMosques(location: MosqueLocation): Promise<Near
     }
 
     return {
-      mosques: fallbackMosques,
+      mosques: fallbackMosques.map(normalizeCachedMosque),
       sourceLabel: "Örnek camiler"
     };
   }
