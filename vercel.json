@@ -13,6 +13,10 @@
       "destination": "/api/rewards/config"
     },
     {
+      "source": "/rewards/admin",
+      "destination": "/api/rewards/admin"
+    },
+    {
       "source": "/rewards/claim",
       "destination": "/api/rewards/claim"
     },

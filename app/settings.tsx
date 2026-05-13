@@ -18,7 +18,7 @@ import type { SettingsItem } from "@/types";
 
 const THEME_STORAGE_KEY = "huzur.settings.theme";
 const LANGUAGE_STORAGE_KEY = "huzur.settings.language";
-const APP_VERSION = "1.0.26";
+const APP_VERSION = "1.0.27";
 const LEADERBOARD_LIMIT = 20;
 
 type ThemeMode = "Aydınlık" | "Koyu";
