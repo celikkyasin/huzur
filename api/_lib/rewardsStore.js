@@ -221,10 +221,33 @@ async function getLeaderboard(period, limit) {
   };
 }
 
+async function removeRewardUser(code) {
+  const normalizedCode = normalizeCode(code);
+
+  if (normalizedCode !== "HZR-TEST1") {
+    return { ok: false, statusCode: 400, error: "Only the test reward user can be removed." };
+  }
+
+  const currentWeekKey = getWeekKey();
+  const currentMonthKey = getMonthKey();
+  const removed = await Promise.all([
+    redisCommand("ZREM", "huzur:leaderboard:all", normalizedCode),
+    redisCommand("ZREM", `huzur:leaderboard:week:${currentWeekKey}`, normalizedCode),
+    redisCommand("ZREM", `huzur:leaderboard:month:${currentMonthKey}`, normalizedCode)
+  ]);
+
+  return {
+    ok: true,
+    statusCode: 200,
+    removed: removed.reduce((total, value) => total + normalizePoints(value), 0)
+  };
+}
+
 module.exports = {
   getLeaderboard,
   handleCors,
   json,
   readBody,
+  removeRewardUser,
   syncRewardScore
 };
