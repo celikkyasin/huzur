@@ -21,7 +21,7 @@ UPSTASH_REDIS_REST_KV_REST_API_TOKEN=...
 Set this in the mobile app build environment:
 
 ```env
-EXPO_PUBLIC_REWARDS_API_URL=https://your-api-domain.vercel.app
+EXPO_PUBLIC_REWARDS_API_URL=https://huzur-six.vercel.app
 ```
 
 ## Endpoints
