@@ -10,7 +10,7 @@ import { PrimaryButton } from "@/components/ui/PrimaryButton";
 import { ScreenContainer } from "@/components/ui/ScreenContainer";
 import { SectionTitle } from "@/components/ui/SectionTitle";
 import { getPrayerNotificationsEnabled, setPrayerNotificationsEnabled } from "@/services/prayerNotifications";
-import { fetchRewardConfig, submitRewardClaim, type RemoteLeaderboardItem, type RewardConfig } from "@/services/rewardsApi";
+import { fetchRewardConfig, submitRewardClaim, type RemoteLeaderboardItem, type RewardConfig, type RewardPrize } from "@/services/rewardsApi";
 import { usePrayerTimesStore } from "@/store/prayerTimesStore";
 import { useRewardStore } from "@/store/rewardStore";
 import { colors, radii, shadows, typography } from "@/theme";
@@ -18,7 +18,7 @@ import type { SettingsItem } from "@/types";
 
 const THEME_STORAGE_KEY = "huzur.settings.theme";
 const LANGUAGE_STORAGE_KEY = "huzur.settings.language";
-const APP_VERSION = "1.0.27";
+const APP_VERSION = "1.0.28";
 const LEADERBOARD_LIMIT = 20;
 
 type ThemeMode = "Aydınlık" | "Koyu";
@@ -55,6 +55,7 @@ export default function SettingsScreen() {
   const [claimFullName, setClaimFullName] = useState("");
   const [claimContact, setClaimContact] = useState("");
   const [claimAddress, setClaimAddress] = useState("");
+  const [selectedPrizePreview, setSelectedPrizePreview] = useState<RewardPrize | null>(null);
   const prayerTimes = usePrayerTimesStore((state) => state.times);
   const userCode = useRewardStore((state) => state.userCode);
   const totalPoints = useRewardStore((state) => state.totalPoints);
@@ -354,7 +355,23 @@ export default function SettingsScreen() {
               <View style={styles.prizeList}>
                 {rewardConfig.prizes.map((prize) => (
                   <View key={`${prize.rank}-${prize.title}`} style={[styles.prizeItem, currentRank === prize.rank && styles.prizeItemActive]}>
-                    {prize.imageUrl ? <Image source={{ uri: prize.imageUrl }} style={styles.prizeItemImage} resizeMode="cover" /> : <View style={styles.prizeItemImageFallback}><Ionicons name="gift" size={24} color={colors.emerald} /></View>}
+                    {prize.imageUrl ? (
+                      <Pressable
+                        accessibilityRole="imagebutton"
+                        accessibilityLabel={`${prize.title} görselini büyüt`}
+                        onPress={() => setSelectedPrizePreview(prize)}
+                        style={({ pressed }) => [styles.prizeImageButton, pressed && styles.pressed]}
+                      >
+                        <Image source={{ uri: prize.imageUrl }} style={styles.prizeItemImage} resizeMode="cover" />
+                        <View style={styles.prizeZoomBadge}>
+                          <Ionicons name="expand" size={13} color={colors.white} />
+                        </View>
+                      </Pressable>
+                    ) : (
+                      <View style={styles.prizeItemImageFallback}>
+                        <Ionicons name="gift" size={24} color={colors.emerald} />
+                      </View>
+                    )}
                     <View style={styles.prizeItemCopy}>
                       <Text style={styles.prizeItemRank}>{prize.rank}. Ödül</Text>
                       <Text style={styles.prizeItemTitle}>{prize.title}</Text>
@@ -439,6 +456,24 @@ export default function SettingsScreen() {
             <Pressable accessibilityRole="button" disabled={isSubmittingClaim} onPress={() => void sendRewardClaim()} style={({ pressed }) => [styles.claimSubmitButton, pressed && styles.pressed]}>
               {isSubmittingClaim ? <ActivityIndicator color={colors.white} /> : <Text style={styles.claimSubmitText}>Gönder</Text>}
             </Pressable>
+          </View>
+        </View>
+      </Modal>
+
+      <Modal visible={Boolean(selectedPrizePreview)} transparent animationType="fade" onRequestClose={() => setSelectedPrizePreview(null)}>
+        <View style={styles.modalBackdrop}>
+          <View style={styles.prizePreviewModal}>
+            <View style={styles.claimModalTop}>
+              <View style={styles.claimModalCopy}>
+                <Text style={styles.claimTitle}>{selectedPrizePreview?.title}</Text>
+                <Text style={styles.claimSubtitle}>{selectedPrizePreview?.rank}. Ödül</Text>
+              </View>
+              <Pressable accessibilityRole="button" onPress={() => setSelectedPrizePreview(null)} style={styles.modalCloseButton}>
+                <Ionicons name="close" size={20} color={colors.emerald} />
+              </Pressable>
+            </View>
+            {selectedPrizePreview?.imageUrl ? <Image source={{ uri: selectedPrizePreview.imageUrl }} style={styles.prizePreviewImage} resizeMode="contain" /> : null}
+            {selectedPrizePreview?.description ? <Text style={styles.prizePreviewDescription}>{selectedPrizePreview.description}</Text> : null}
           </View>
         </View>
       </Modal>
@@ -762,6 +797,24 @@ const styles = StyleSheet.create({
     borderRadius: radii.sm,
     backgroundColor: colors.emeraldSoft
   },
+  prizeImageButton: {
+    width: 72,
+    height: 72,
+    borderRadius: radii.sm
+  },
+  prizeZoomBadge: {
+    position: "absolute",
+    right: 5,
+    bottom: 5,
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    backgroundColor: "rgba(7,94,71,0.86)",
+    alignItems: "center",
+    justifyContent: "center",
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.68)"
+  },
   prizeItemImageFallback: {
     width: 72,
     height: 72,
@@ -1017,6 +1070,27 @@ const styles = StyleSheet.create({
     backgroundColor: colors.paper,
     padding: 18,
     ...shadows.card
+  },
+  prizePreviewModal: {
+    width: "100%",
+    maxWidth: 460,
+    borderRadius: radii.lg,
+    backgroundColor: colors.paper,
+    padding: 18,
+    ...shadows.card
+  },
+  prizePreviewImage: {
+    width: "100%",
+    height: 320,
+    borderRadius: radii.md,
+    backgroundColor: colors.emeraldSoft
+  },
+  prizePreviewDescription: {
+    color: colors.muted,
+    fontSize: 13,
+    lineHeight: 19,
+    marginTop: 12,
+    fontWeight: "800"
   },
   claimModalTop: {
     flexDirection: "row",
