@@ -68,7 +68,7 @@ Requires `x-admin-token: REWARDS_ADMIN_TOKEN`. Use this to turn the campaign on/
   "minimumMonthlyPoints": 500,
   "prizes": [
     {
-      "title": "Kuran-i Kerim",
+      "title": "Kur'an-ı Kerim",
       "description": "Ay birincisine hediye edilir.",
       "imageUrl": "https://example.com/kuran.jpg"
     },

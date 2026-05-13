@@ -18,7 +18,8 @@ import type { SettingsItem } from "@/types";
 
 const THEME_STORAGE_KEY = "huzur.settings.theme";
 const LANGUAGE_STORAGE_KEY = "huzur.settings.language";
-const APP_VERSION = "1.0.25";
+const APP_VERSION = "1.0.26";
+const LEADERBOARD_LIMIT = 20;
 
 type ThemeMode = "Aydınlık" | "Koyu";
 type LanguageMode = "Türkçe" | "English";
@@ -67,11 +68,13 @@ export default function SettingsScreen() {
   const lastSyncedAt = useRewardStore((state) => state.lastSyncedAt);
   const syncRewards = useRewardStore((state) => state.syncRewards);
   const loadLeaderboard = useRewardStore((state) => state.loadLeaderboard);
-  const leaderboardSource = remoteLeaderboard.length > 0 ? remoteLeaderboard : leaderboardSamples;
-  const leaderboard: LeaderboardItem[] = [...leaderboardSource.filter((item) => item.code !== userCode), { code: userCode, points: monthlyPoints, isCurrentUser: true }]
-    .sort((first, second) => second.points - first.points)
-    .slice(0, 5);
-  const currentRank = leaderboard.findIndex((item) => item.isCurrentUser) + 1;
+  const leaderboard: LeaderboardItem[] =
+    remoteLeaderboard.length > 0
+      ? remoteLeaderboard.slice(0, LEADERBOARD_LIMIT).map((item) => ({ ...item, isCurrentUser: item.code === userCode }))
+      : [...leaderboardSamples.filter((item) => item.code !== userCode), { code: userCode, points: monthlyPoints, isCurrentUser: true }]
+          .sort((first, second) => second.points - first.points)
+          .slice(0, LEADERBOARD_LIMIT);
+  const currentRank = leaderboard.find((item) => item.isCurrentUser)?.rank || leaderboard.findIndex((item) => item.isCurrentUser) + 1;
   const currentPrize = rewardConfig?.prizes.find((prize) => prize.rank === currentRank);
   const isMonthlyWinner = Boolean(rewardConfig?.isActive && currentPrize && currentRank <= 2 && monthlyPoints >= (rewardConfig.minimumMonthlyPoints || 0));
   const lastSyncLabel = lastSyncedAt ? new Date(lastSyncedAt).toLocaleTimeString("tr-TR", { hour: "2-digit", minute: "2-digit" }) : "";
@@ -119,7 +122,7 @@ export default function SettingsScreen() {
     }
 
     if (claimFullName.trim().length < 3 || claimContact.trim().length < 5 || claimAddress.trim().length < 10) {
-      Alert.alert("Eksik bilgi", "Lutfen ad soyad, telefon/e-posta ve teslimat adresini doldurun.");
+      Alert.alert("Eksik bilgi", "Lütfen ad soyad, telefon/e-posta ve teslimat adresini doldurun.");
       return;
     }
 
@@ -139,11 +142,11 @@ export default function SettingsScreen() {
       setClaimFullName("");
       setClaimContact("");
       setClaimAddress("");
-      Alert.alert("Basvurun alindi", "Odul teslim bilgilerin bize ulasti. Kazanan kontrolunden sonra seninle iletisime gecilecek.");
+      Alert.alert("Başvurun alındı", "Ödül teslim bilgilerin bize ulaştı. Kazanan kontrolünden sonra seninle iletişime geçilecek.");
       return;
     }
 
-    Alert.alert("Basvuru gonderilemedi", "Odul basvurusu su anda kaydedilemedi. Puan tablosunu yenileyip tekrar deneyin.");
+    Alert.alert("Başvuru gönderilemedi", "Ödül başvurusu şu anda kaydedilemedi. Puan tablosunu yenileyip tekrar deneyin.");
   };
 
   const toggleNotifications = async (nextValue = !notificationsEnabled) => {
@@ -341,10 +344,10 @@ export default function SettingsScreen() {
             <View style={styles.prizeCopy}>
               <View style={styles.prizeTitleRow}>
                 <Ionicons name={rewardConfig.isActive ? "gift" : "pause-circle"} size={18} color={colors.emerald} />
-                <Text style={styles.prizeTitle}>{rewardConfig.isActive ? "Bu Ayin Odulleri" : "Odul sistemi pasif"}</Text>
+                <Text style={styles.prizeTitle}>{rewardConfig.isActive ? "Bu Ayın Ödülleri" : "Ödül sistemi pasif"}</Text>
               </View>
               <Text style={styles.prizeSubtitle}>
-                {rewardConfig.isActive ? `Ay sonunda ilk iki kullanici odul kazanir. Minimum ${rewardConfig.minimumMonthlyPoints} puan gerekir.` : "Bu ay odul basvurusu kapali. Puanlar yine tabloda birikir."}
+                {rewardConfig.isActive ? `Ay sonunda ilk iki kullanıcı ödül kazanır. Minimum ${rewardConfig.minimumMonthlyPoints} puan gerekir.` : "Bu ay ödül başvurusu kapalı. Puanlar yine tabloda birikir."}
               </Text>
             </View>
             {rewardConfig.isActive ? (
@@ -353,7 +356,7 @@ export default function SettingsScreen() {
                   <View key={`${prize.rank}-${prize.title}`} style={[styles.prizeItem, currentRank === prize.rank && styles.prizeItemActive]}>
                     {prize.imageUrl ? <Image source={{ uri: prize.imageUrl }} style={styles.prizeItemImage} resizeMode="cover" /> : <View style={styles.prizeItemImageFallback}><Ionicons name="gift" size={24} color={colors.emerald} /></View>}
                     <View style={styles.prizeItemCopy}>
-                      <Text style={styles.prizeItemRank}>{prize.rank}. Odul</Text>
+                      <Text style={styles.prizeItemRank}>{prize.rank}. Ödül</Text>
                       <Text style={styles.prizeItemTitle}>{prize.title}</Text>
                       <Text style={styles.prizeItemDescription}>{prize.description}</Text>
                     </View>
@@ -361,7 +364,7 @@ export default function SettingsScreen() {
                 ))}
               </View>
             ) : null}
-            {isMonthlyWinner ? <PrimaryButton label="Odulunu Al" icon="gift" style={styles.claimButton} onPress={() => setClaimFormVisible(true)} /> : null}
+            {isMonthlyWinner ? <PrimaryButton label="Ödülünü Al" icon="gift" style={styles.claimButton} onPress={() => setClaimFormVisible(true)} /> : null}
           </View>
         ) : null}
 
@@ -416,8 +419,8 @@ export default function SettingsScreen() {
           <View style={styles.claimModal}>
             <View style={styles.claimModalTop}>
               <View style={styles.claimModalCopy}>
-                <Text style={styles.claimTitle}>Odul teslim bilgileri</Text>
-                <Text style={styles.claimSubtitle}>{currentRank}. sira: {currentPrize?.title || "Odul"} • Kod: {userCode}</Text>
+                <Text style={styles.claimTitle}>Ödül teslim bilgileri</Text>
+                <Text style={styles.claimSubtitle}>{currentRank}. sıra: {currentPrize?.title || "Ödül"} • Kod: {userCode}</Text>
               </View>
               <Pressable accessibilityRole="button" onPress={() => setClaimFormVisible(false)} style={styles.modalCloseButton}>
                 <Ionicons name="close" size={20} color={colors.emerald} />
@@ -434,7 +437,7 @@ export default function SettingsScreen() {
               style={[styles.claimInput, styles.claimAddressInput]}
             />
             <Pressable accessibilityRole="button" disabled={isSubmittingClaim} onPress={() => void sendRewardClaim()} style={({ pressed }) => [styles.claimSubmitButton, pressed && styles.pressed]}>
-              {isSubmittingClaim ? <ActivityIndicator color={colors.white} /> : <Text style={styles.claimSubmitText}>Gonder</Text>}
+              {isSubmittingClaim ? <ActivityIndicator color={colors.white} /> : <Text style={styles.claimSubmitText}>Gönder</Text>}
             </Pressable>
           </View>
         </View>

@@ -91,8 +91,8 @@ export async function syncRewardScore(payload: RewardSyncPayload) {
   });
 }
 
-export async function fetchRewardLeaderboard(period: LeaderboardPeriod) {
-  const result = await requestJson<{ items?: RemoteLeaderboardItem[] }>(`/leaderboard?period=${period}`);
+export async function fetchRewardLeaderboard(period: LeaderboardPeriod, limit = 20) {
+  const result = await requestJson<{ items?: RemoteLeaderboardItem[] }>(`/leaderboard?period=${period}&limit=${limit}`);
   return Array.isArray(result?.items) ? result.items : null;
 }
 

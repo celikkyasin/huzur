@@ -10,14 +10,14 @@ const DEFAULT_REWARD_CONFIG = {
   prizes: [
     {
       rank: 1,
-      title: "Kuran-i Kerim",
-      description: "Ay icinde en cok puani toplayan kullanici kazanir.",
+      title: "Kur'an-ı Kerim",
+      description: "Ay içinde en çok puanı toplayan kullanıcı kazanır.",
       imageUrl: ""
     },
     {
       rank: 2,
       title: "Seccade",
-      description: "Ay icinde en cok puani toplayan ikinci kullanici kazanir.",
+      description: "Ay içinde en çok puanı toplayan ikinci kullanıcı kazanır.",
       imageUrl: ""
     }
   ]
@@ -148,7 +148,7 @@ function normalizePrizes(value, fallback = DEFAULT_REWARD_CONFIG.prizes) {
   return source
     .map((item, index) => ({
       rank: index + 1,
-      title: normalizeText(item?.title, 80) || fallback[index]?.title || `${index + 1}. Odul`,
+      title: normalizeText(item?.title, 80) || fallback[index]?.title || `${index + 1}. Ödül`,
       description: normalizeText(item?.description, 180) || fallback[index]?.description || "",
       imageUrl: normalizeText(item?.imageUrl, 500) || ""
     }))
@@ -294,7 +294,7 @@ async function getRewardConfig() {
     isActive: config.isActive !== false,
     minimumMonthlyPoints: normalizePoints(config.minimumMonthlyPoints || DEFAULT_REWARD_CONFIG.minimumMonthlyPoints),
     prizeTitle: prizes.map((prize) => `${prize.rank}. ${prize.title}`).join(" • "),
-    prizeDescription: "Ay icinde en cok puani toplayan ilk iki kullanici odul kazanir.",
+    prizeDescription: "Ay içinde en çok puanı toplayan ilk iki kullanıcı ödül kazanır.",
     prizeImageUrl: prizes[0]?.imageUrl || "",
     prizes
   };
@@ -315,7 +315,7 @@ async function setRewardConfig(payload) {
     statusCode: 200,
     ...nextConfig,
     prizeTitle: nextConfig.prizes.map((prize) => `${prize.rank}. ${prize.title}`).join(" • "),
-    prizeDescription: "Ay icinde en cok puani toplayan ilk iki kullanici odul kazanir.",
+    prizeDescription: "Ay içinde en çok puanı toplayan ilk iki kullanıcı ödül kazanır.",
     prizeImageUrl: nextConfig.prizes[0]?.imageUrl || ""
   };
 }
