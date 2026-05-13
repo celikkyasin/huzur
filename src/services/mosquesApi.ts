@@ -6,6 +6,7 @@ const OVERPASS_URLS = ["https://overpass.kumi.systems/api/interpreter", "https:/
 const CACHE_KEY_PREFIX = "huzur.nearby-mosques.v1";
 const SEARCH_RADIUS_METERS = 8000;
 const MAX_MOSQUE_RESULTS = 12;
+const OVERPASS_TIMEOUT_MS = 4500;
 
 type MosqueLocation = {
   latitude?: number;
@@ -170,6 +171,40 @@ function mapElements(elements: OverpassElement[], latitude: number, longitude: n
     .map(({ distanceMeters: _distanceMeters, ...mosque }) => mosque);
 }
 
+async function fetchWithTimeout(url: string) {
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), OVERPASS_TIMEOUT_MS);
+
+  try {
+    return await fetch(url, {
+      headers: {
+        Accept: "application/json"
+      },
+      signal: controller.signal
+    });
+  } finally {
+    clearTimeout(timeout);
+  }
+}
+
+export async function getCachedNearbyMosques(location: MosqueLocation): Promise<NearbyMosquesResult | undefined> {
+  if (typeof location.latitude !== "number" || typeof location.longitude !== "number") {
+    return undefined;
+  }
+
+  const cacheKey = buildCacheKey(location.latitude, location.longitude);
+  const cachedMosques = await readCachedMosques(cacheKey);
+
+  if (!cachedMosques?.length) {
+    return undefined;
+  }
+
+  return {
+    mosques: cachedMosques,
+    sourceLabel: "Kaydedilmiş camiler"
+  };
+}
+
 export async function fetchNearbyMosques(location: MosqueLocation): Promise<NearbyMosquesResult> {
   if (typeof location.latitude !== "number" || typeof location.longitude !== "number") {
     return {
@@ -186,11 +221,7 @@ export async function fetchNearbyMosques(location: MosqueLocation): Promise<Near
 
     for (const endpoint of OVERPASS_URLS) {
       try {
-        const response = await fetch(`${endpoint}?data=${query}`, {
-          headers: {
-            Accept: "application/json"
-          }
-        });
+        const response = await fetchWithTimeout(`${endpoint}?data=${query}`);
 
         if (!response.ok) {
           continue;

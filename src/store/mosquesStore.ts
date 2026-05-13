@@ -1,6 +1,6 @@
 import { create } from "zustand";
 import { mosques as fallbackMosques } from "@/data/mock";
-import { fetchNearbyMosques } from "@/services/mosquesApi";
+import { fetchNearbyMosques, getCachedNearbyMosques } from "@/services/mosquesApi";
 import type { Mosque } from "@/types";
 
 type MosquesLocation = {
@@ -38,20 +38,35 @@ export const useMosquesStore = create<MosquesState>((set, get) => ({
       return;
     }
 
-    if (!force && (state.isLoading || (state.lastLocationKey === locationKey && state.sourceLabel !== "Örnek camiler"))) {
+    if (!force && state.isLoading) {
       return;
     }
 
     set({ isLoading: true, errorMessage: undefined });
 
     try {
+      const cachedResult = await getCachedNearbyMosques(location);
+
+      if (cachedResult?.mosques.length && !force) {
+        set({
+          mosques: cachedResult.mosques,
+          sourceLabel: "Kaydedilmiş camiler güncelleniyor",
+          lastLocationKey: locationKey,
+          isLoading: true,
+          errorMessage: undefined
+        });
+      } else if (!force && state.lastLocationKey === locationKey && state.sourceLabel !== "Örnek camiler") {
+        set({ isLoading: false });
+        return;
+      }
+
       const result = await fetchNearbyMosques(location);
       set({
         mosques: result.mosques,
         sourceLabel: result.sourceLabel,
         lastLocationKey: locationKey,
         isLoading: false,
-        errorMessage: result.sourceLabel === "Örnek camiler" ? "Yakındaki camiler alınamadı, örnek liste gösteriliyor." : undefined
+        errorMessage: result.sourceLabel === "Örnek camiler" ? "Yakındaki camiler alınamadı, yakın zamanda tekrar deneyin." : undefined
       });
     } catch {
       set({

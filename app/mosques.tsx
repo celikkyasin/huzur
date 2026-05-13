@@ -34,13 +34,11 @@ function getPreviewPosition(mosque: Mosque, latitude?: number, longitude?: numbe
 function MosqueMapPreview({
   mosques,
   latitude,
-  longitude,
-  isLoading
+  longitude
 }: {
   mosques: Mosque[];
   latitude?: number;
   longitude?: number;
-  isLoading: boolean;
 }) {
   const previewMosques = mosques.filter((mosque) => typeof mosque.latitude === "number" && typeof mosque.longitude === "number").slice(0, 7);
   const nearestMosque = mosques[0];
@@ -62,7 +60,7 @@ function MosqueMapPreview({
         ))}
       </View>
       <View style={styles.mapOverlay}>
-        <Text style={styles.mapCount}>{isLoading ? "..." : mosques.length}</Text>
+        <Text style={styles.mapCount}>{mosques.length}</Text>
         <Text style={styles.mapLabel}>yakın cami</Text>
       </View>
       {nearestMosque ? (
@@ -102,7 +100,8 @@ export default function MosquesScreen() {
 
   const refreshNearbyMosques = async () => {
     await refreshLocation();
-    await loadNearbyMosques({ latitude, longitude }, true);
+    const nextLocation = useLocationStore.getState();
+    await loadNearbyMosques({ latitude: nextLocation.latitude, longitude: nextLocation.longitude }, true);
   };
 
   const openDirections = async (mosque: Mosque) => {
@@ -126,7 +125,7 @@ export default function MosquesScreen() {
   return (
     <ScreenContainer>
       <AppHeader title="Yakındaki Camiler" />
-      <MosqueMapPreview mosques={visibleMosques} latitude={latitude} longitude={longitude} isLoading={isLoadingMosques} />
+      <MosqueMapPreview mosques={visibleMosques} latitude={latitude} longitude={longitude} />
 
       <View style={styles.titleRow}>
         <View style={styles.titleText}>
@@ -144,7 +143,7 @@ export default function MosquesScreen() {
         </View>
         <View style={styles.statusText}>
           <Text style={styles.statusTitle}>{hasCoordinates ? sourceLabel : "Konum izni bekleniyor"}</Text>
-          <Text style={styles.statusSubtitle}>{hasCoordinates ? "Liste en yakın camiden başlayacak şekilde sıralanır." : "Yakındaki camileri görmek için konum izni verin."}</Text>
+          <Text style={styles.statusSubtitle}>{hasCoordinates ? (isLoadingMosques ? "Liste gösteriliyor, canlı sonuçlar güncelleniyor." : "Liste en yakın camiden başlayacak şekilde sıralanır.") : "Yakındaki camileri görmek için konum izni verin."}</Text>
         </View>
       </Card>
 
@@ -159,7 +158,7 @@ export default function MosquesScreen() {
         <PrimaryButton label="Konum İzni Ver" icon="location" onPress={() => void requestLocationPermission()} style={styles.permissionButton} />
       ) : null}
 
-      {isLoadingMosques ? (
+      {isLoadingMosques && !visibleMosques.length ? (
         <View style={styles.loading}>
           <ActivityIndicator color={colors.emerald} />
           <Text style={styles.loadingText}>Yakındaki camiler aranıyor</Text>
