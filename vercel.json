@@ -25,6 +25,18 @@
       "destination": "/api/rewards/claims"
     },
     {
+      "source": "/friday-messages/config",
+      "destination": "/api/friday-messages/config"
+    },
+    {
+      "source": "/friday-messages/upload",
+      "destination": "/api/friday-messages/upload"
+    },
+    {
+      "source": "/friday-messages/admin",
+      "destination": "/api/friday-messages/admin"
+    },
+    {
       "source": "/leaderboard",
       "destination": "/api/leaderboard"
     }

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Alert, FlatList, Image, Modal, Pressable, ScrollView, StyleSheet, Text, View, useWindowDimensions, type NativeScrollEvent, type NativeSyntheticEvent } from "react-native";
 import { Asset } from "expo-asset";
 import * as FileSystem from "expo-file-system/legacy";
@@ -10,12 +10,48 @@ import { MessageCard } from "@/components/MessageCard";
 import { ScreenContainer } from "@/components/ui/ScreenContainer";
 import { SectionTitle } from "@/components/ui/SectionTitle";
 import { fridayCategories, fridayMessages } from "@/data/fridayMessages";
+import { fetchRemoteFridayMessages } from "@/services/fridayMessagesApi";
 import { useRewardStore } from "@/store/rewardStore";
 import type { FridayMessage } from "@/types";
 import { colors, radii, typography } from "@/theme";
 
+function getImageSource(message: FridayMessage) {
+  return message.imageUrl ? { uri: message.imageUrl } : message.image;
+}
+
+function getImageAspectRatio(message: FridayMessage) {
+  if (message.aspectRatio) {
+    return message.aspectRatio;
+  }
+
+  if (message.image) {
+    const source = Image.resolveAssetSource(message.image);
+    if (source?.width && source?.height) {
+      return source.width / source.height;
+    }
+  }
+
+  return 9 / 16;
+}
+
 async function getMessageImageUri(message: FridayMessage) {
-  if (!message.image || !FileSystem.cacheDirectory) {
+  if (!FileSystem.cacheDirectory) {
+    return null;
+  }
+
+  if (message.imageUrl) {
+    const extension = message.imageUrl.toLowerCase().includes(".jpg") || message.imageUrl.toLowerCase().includes(".jpeg") ? "jpg" : "png";
+    const targetUri = `${FileSystem.cacheDirectory}huzur-${message.id}.${extension}`;
+    const existing = await FileSystem.getInfoAsync(targetUri);
+
+    if (!existing.exists) {
+      await FileSystem.downloadAsync(message.imageUrl, targetUri);
+    }
+
+    return targetUri;
+  }
+
+  if (!message.image) {
     return null;
   }
 
@@ -41,12 +77,28 @@ export default function FridayMessagesScreen() {
   const { width: screenWidth, height: screenHeight } = useWindowDimensions();
   const [previewIndex, setPreviewIndex] = useState<number | null>(null);
   const [previewStartIndex, setPreviewStartIndex] = useState(0);
+  const [remoteMessages, setRemoteMessages] = useState<FridayMessage[] | null>(null);
   const awardReward = useRewardStore((state) => state.awardReward);
-  const previewMessage = previewIndex === null ? null : fridayMessages[previewIndex] ?? null;
+  const messages = useMemo(() => (remoteMessages?.length ? remoteMessages : fridayMessages), [remoteMessages]);
+  const previewMessage = previewIndex === null ? null : messages[previewIndex] ?? null;
   const previewImageHeight = Math.max(320, screenHeight - 190);
 
+  useEffect(() => {
+    let isMounted = true;
+
+    fetchRemoteFridayMessages().then((items) => {
+      if (isMounted && items?.length) {
+        setRemoteMessages(items);
+      }
+    });
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
   const openPreview = (message: FridayMessage) => {
-    const messageIndex = fridayMessages.findIndex((item) => item.id === message.id);
+    const messageIndex = messages.findIndex((item) => item.id === message.id);
     const nextIndex = messageIndex >= 0 ? messageIndex : 0;
     setPreviewStartIndex(nextIndex);
     setPreviewIndex(nextIndex);
@@ -58,7 +110,7 @@ export default function FridayMessagesScreen() {
     const pageHeight = event.nativeEvent.layoutMeasurement.height;
     const nextIndex = Math.round(event.nativeEvent.contentOffset.y / pageHeight);
 
-    if (nextIndex >= 0 && nextIndex < fridayMessages.length) {
+    if (nextIndex >= 0 && nextIndex < messages.length) {
       setPreviewIndex(nextIndex);
     }
   };
@@ -75,7 +127,7 @@ export default function FridayMessagesScreen() {
 
       await Sharing.shareAsync(uri, {
         dialogTitle: "Cuma Mesajı",
-        mimeType: "image/png"
+        mimeType: uri.endsWith(".jpg") ? "image/jpeg" : "image/png"
       });
       void awardReward({
         action: "fridayShare",
@@ -105,7 +157,7 @@ export default function FridayMessagesScreen() {
       }
 
       await MediaLibrary.saveToLibraryAsync(uri);
-      Alert.alert("Galeriye kaydedildi", "Görsel artık telefonunuzun galerisinde.");
+      Alert.alert("Galeriye kaydedildi", "Görsel telefonunuzun fotoğraf galerisine eklendi.");
     } catch {
       Alert.alert("Görsel kaydedilemedi", "Görsel galeriye kaydedilirken bir sorun oluştu.");
     }
@@ -116,7 +168,7 @@ export default function FridayMessagesScreen() {
       <AppHeader title="Cuma Mesajları" />
       <View style={styles.heroText}>
         <Text style={styles.title}>Paylaşıma Hazır Mesajlar</Text>
-        <Text style={styles.subtitle}>Dikey hikaye görsellerini seçin, paylaşın veya resim galerinize kaydedin.</Text>
+        <Text style={styles.subtitle}>Dikey ve kare görselleri seçin, paylaşın veya resim galerinize kaydedin.</Text>
       </View>
 
       <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.categories}>
@@ -128,10 +180,10 @@ export default function FridayMessagesScreen() {
       </ScrollView>
 
       <SectionTitle title="Öne Çıkan" />
-      <MessageCard message={fridayMessages[0]} featured onShare={() => shareMessage(fridayMessages[0])} onDownload={() => downloadMessage(fridayMessages[0])} onPreview={() => openPreview(fridayMessages[0])} />
+      <MessageCard message={messages[0]} featured onShare={() => shareMessage(messages[0])} onDownload={() => downloadMessage(messages[0])} onPreview={() => openPreview(messages[0])} />
 
       <SectionTitle title="Hazır Kartlar" />
-      {fridayMessages.slice(1).map((message) => (
+      {messages.slice(1).map((message) => (
         <MessageCard key={message.id} message={message} onShare={() => shareMessage(message)} onDownload={() => downloadMessage(message)} onPreview={() => openPreview(message)} />
       ))}
 
@@ -139,26 +191,32 @@ export default function FridayMessagesScreen() {
         <View style={styles.previewBackdrop}>
           <View style={styles.previewCounter}>
             <Text style={styles.previewCounterText}>
-              {(previewIndex ?? 0) + 1} / {fridayMessages.length}
+              {(previewIndex ?? 0) + 1} / {messages.length}
             </Text>
           </View>
           <Pressable accessibilityRole="button" accessibilityLabel="Tam ekranı kapat" onPress={closePreview} style={styles.closeButton}>
             <Ionicons name="close" size={26} color={colors.white} />
           </Pressable>
           <FlatList
-            key={`preview-${previewStartIndex}-${screenHeight}`}
-            data={fridayMessages}
+            key={`preview-${previewStartIndex}-${screenHeight}-${messages.length}`}
+            data={messages}
             keyExtractor={(item) => item.id}
             pagingEnabled
             showsVerticalScrollIndicator={false}
             initialScrollIndex={previewStartIndex}
             getItemLayout={(_, index) => ({ length: screenHeight, offset: screenHeight * index, index })}
             onMomentumScrollEnd={handlePreviewScrollEnd}
-            renderItem={({ item }) => (
-              <View style={[styles.previewPage, { width: screenWidth, height: screenHeight }]}>
-                {item.image ? <Image source={item.image} style={[styles.previewImage, { width: screenWidth, height: previewImageHeight }]} resizeMode="contain" /> : null}
-              </View>
-            )}
+            renderItem={({ item }) => {
+              const imageSource = getImageSource(item);
+              const imageAspectRatio = getImageAspectRatio(item);
+              const previewWidth = Math.min(screenWidth, previewImageHeight * imageAspectRatio);
+
+              return (
+                <View style={[styles.previewPage, { width: screenWidth, height: screenHeight }]}>
+                  {imageSource ? <Image source={imageSource} style={[styles.previewImage, { width: previewWidth, height: previewImageHeight }]} resizeMode="contain" /> : null}
+                </View>
+              );
+            }}
           />
           {previewMessage ? (
             <View style={styles.previewActions}>

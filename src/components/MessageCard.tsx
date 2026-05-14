@@ -1,4 +1,4 @@
-import { ImageBackground, Pressable, StyleSheet, Text, View } from "react-native";
+import { Image, Pressable, StyleSheet, Text, View } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons } from "@expo/vector-icons";
 import type { FridayMessage } from "@/types";
@@ -13,6 +13,9 @@ type MessageCardProps = {
 };
 
 export function MessageCard({ message, featured, onShare, onDownload, onPreview }: MessageCardProps) {
+  const imageSource = message.imageUrl ? { uri: message.imageUrl } : message.image;
+  const resolvedImage = message.image ? Image.resolveAssetSource(message.image) : null;
+  const imageAspectRatio = message.aspectRatio || (resolvedImage?.width && resolvedImage?.height ? resolvedImage.width / resolvedImage.height : 9 / 16);
   const actionButtons = (
     <View style={styles.actions}>
       <Pressable accessibilityRole="button" accessibilityLabel="Paylaş" onPress={onShare} hitSlop={10} style={styles.actionButton}>
@@ -26,11 +29,10 @@ export function MessageCard({ message, featured, onShare, onDownload, onPreview 
 
   return (
     <View style={[styles.wrap, featured && styles.featuredWrap]}>
-      {message.image ? (
-        <Pressable accessibilityRole="imagebutton" accessibilityLabel="Görseli tam ekran aç" onPress={onPreview} style={styles.imageCard}>
-          <ImageBackground source={message.image} style={styles.media} imageStyle={styles.image} resizeMode="cover">
-            {actionButtons}
-          </ImageBackground>
+      {imageSource ? (
+        <Pressable accessibilityRole="imagebutton" accessibilityLabel="Görseli tam ekran aç" onPress={onPreview} style={[styles.imageCard, { aspectRatio: imageAspectRatio }]}>
+          <Image source={imageSource} style={styles.media} resizeMode="contain" />
+          {actionButtons}
         </Pressable>
       ) : (
         <Pressable accessibilityRole="button" accessibilityLabel="Kartı tam ekran aç" onPress={onPreview}>
@@ -68,17 +70,16 @@ const styles = StyleSheet.create({
   },
   imageCard: {
     width: "100%",
-    aspectRatio: 9 / 16,
     borderRadius: radii.lg,
     overflow: "hidden",
-    backgroundColor: colors.emeraldDark,
+    backgroundColor: colors.paper,
+    borderWidth: 1,
+    borderColor: colors.line,
     ...shadows.soft
   },
   media: {
-    flex: 1
-  },
-  image: {
-    borderRadius: radii.lg
+    width: "100%",
+    height: "100%"
   },
   actions: {
     position: "absolute",

@@ -69,6 +69,8 @@ export type FridayMessage = {
   background: string;
   accent: string;
   image?: ImageSourcePropType;
+  imageUrl?: string;
+  aspectRatio?: number;
   mediaType?: "image" | "video";
 };
 
