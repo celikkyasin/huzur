@@ -151,7 +151,7 @@ function renderAdmin(response, token, config) {
     </div>
     <section class="panel">
       <div class="toolbar">
-        <p class="hint">1080x1920 dikey ve 1080x1080 kare görseller desteklenir. Dosya yükleyebilir veya direkt görsel linki yazabilirsin.</p>
+        <p class="hint">1080x1920 dikey ve 1080x1080 kare görseller desteklenir. Tek dosya, toplu dosya veya direkt görsel linki ekleyebilirsin.</p>
         <input type="hidden" id="admin-token" value="${escapeHtml(token)}" />
       </div>
       <div class="list" id="list"></div>
@@ -204,7 +204,7 @@ function renderAdmin(response, token, config) {
             </div>
             <div class="field">
               <label>Dosya yükle</label>
-              <input data-upload="\${index}" type="file" accept="image/png,image/jpeg,image/webp" />
+              <input data-upload="\${index}" type="file" accept="image/png,image/jpeg,image/webp" multiple />
             </div>
             <div class="field full row-actions">
               <button type="button" data-move-up="\${index}">Yukarı</button>
@@ -235,30 +235,50 @@ function renderAdmin(response, token, config) {
       });
     }
 
+    function createMessageFromFile(file, category, index) {
+      const prefix = category.includes("Kandil") ? "kandil" : category.includes("Bayram") ? "bayram" : "cuma";
+      const name = file.name.replace(/\.[^.]+$/, "").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
+      const message = category.includes("Kandil") ? "Hayırlı Kandiller." : category.includes("Bayram") ? "Hayırlı Bayramlar." : "Hayırlı Cumalar.";
+      return { id: name || prefix + "-" + index, category, message, background: "#075E47", accent: "#D7B35A", imageUrl: "", aspectRatio: 0.5625 };
+    }
+
+    async function uploadImage(file, token) {
+      const imageData = await toDataUrl(file);
+      const response = await fetch("/friday-messages/upload?token=" + encodeURIComponent(token), {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ fileName: file.name, imageData })
+      });
+      const body = await response.json();
+      if (!response.ok || !body.ok) throw new Error(body.error || body.detail || "Yükleme başarısız.");
+      return body.url;
+    }
+
     listEl.addEventListener("change", async (event) => {
       const uploadIndex = event.target.dataset.upload;
       if (uploadIndex === undefined || !event.target.files?.[0]) return;
       readForm();
       const token = document.getElementById("admin-token").value;
-      const file = event.target.files[0];
+      const files = Array.from(event.target.files);
       const item = event.target.closest(".item");
+      const index = Number(uploadIndex);
+      const category = messages[index]?.category || "Cuma Mesajları";
       const preview = item?.querySelector(".preview");
-      if (preview) preview.src = URL.createObjectURL(file);
-      setStatus(file.name + " seçildi, yükleniyor...", "");
+      if (preview) preview.src = URL.createObjectURL(files[0]);
+      setStatus(files.length + " görsel seçildi, yükleniyor...", "");
       try {
-        const imageData = await toDataUrl(file);
-        const response = await fetch("/friday-messages/upload?token=" + encodeURIComponent(token), {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ fileName: file.name, imageData })
-        });
-        const body = await response.json();
-        if (!response.ok || !body.ok) throw new Error(body.error || body.detail || "Yükleme başarısız.");
-        messages[Number(uploadIndex)].imageUrl = body.url;
-        const imageInput = item?.querySelector('[data-field="imageUrl"]');
-        if (imageInput) imageInput.value = body.url;
-        if (preview) preview.src = body.url;
-        setStatus("Görsel yüklendi. Kaydet butonuna basınca uygulamada yayınlanır.", "ok");
+        for (let fileIndex = 0; fileIndex < files.length; fileIndex += 1) {
+          const file = files[fileIndex];
+          const targetIndex = fileIndex === 0 ? index : messages.length;
+          if (!messages[targetIndex]) {
+            messages.push(createMessageFromFile(file, category, messages.length + 1));
+          }
+          const url = await uploadImage(file, token);
+          messages[targetIndex] = { ...messages[targetIndex], ...createMessageFromFile(file, category, targetIndex + 1), imageUrl: url };
+          setStatus((fileIndex + 1) + " / " + files.length + " görsel yüklendi...", "");
+        }
+        render();
+        setStatus(files.length + " görsel yüklendi. Kaydet butonuna basınca uygulamada yayınlanır.", "ok");
       } catch (error) {
         setStatus(error instanceof Error ? error.message : "Görsel yüklenemedi.", "error");
       }

@@ -1,4 +1,4 @@
-import { Alert, Pressable, StyleSheet, Text, View } from "react-native";
+import { Pressable, StyleSheet, Text, View } from "react-native";
 import { router } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { AppHeader } from "@/components/AppHeader";
@@ -11,15 +11,15 @@ type MenuItem = {
   title: string;
   subtitle: string;
   icon: IconName;
-  route?: string;
+  route: string;
   badge?: string;
 };
 
 const menuItems: MenuItem[] = [
   { title: "Namaz Devamlılığı", subtitle: "Gün gün 5 vakit namaz takibi", icon: "calendar", route: "/prayer-continuity", badge: "Yeni" },
   { title: "Kaza Namazı Takibi", subtitle: "Kalan kaza namazlarını düzenli azalt", icon: "repeat", route: "/qada-prayers", badge: "Yeni" },
-  { title: "Allah'ın 99 İsmi", subtitle: "Görsel kartlar ve sesli okuma hazırlanıyor", icon: "sparkles" },
-  { title: "Cuma Hutbeleri", subtitle: "Her cuma hutbesi uzaktan eklenecek", icon: "document-text" },
+  { title: "Allah'ın 99 İsmi", subtitle: "Görsel kartlar ve sesli okuma", icon: "sparkles", route: "/names-of-allah", badge: "Yeni" },
+  { title: "Cuma Hutbeleri", subtitle: "Haftalık hutbeleri oku", icon: "document-text", route: "/friday-sermons", badge: "Yeni" },
   { title: "Puan Tablosu ve Ödüller", subtitle: "Sıralama, ödüller ve başvuru alanı", icon: "trophy", route: "/rewards" },
   { title: "Ayarlar", subtitle: "Bildirimler, profil ve uygulama tercihleri", icon: "settings", route: "/settings" }
 ];
@@ -31,19 +31,7 @@ export default function MoreScreen() {
       <Text style={styles.title}>Daha Fazla</Text>
       <Text style={styles.subtitle}>Takip, ayarlar ve ödül alanlarını buradan yönet.</Text>
       {menuItems.map((item) => (
-        <Pressable
-          key={item.title}
-          accessibilityRole="button"
-          onPress={() => {
-            if (item.route) {
-              router.push(item.route as never);
-              return;
-            }
-
-            Alert.alert("Hazırlanıyor", `${item.title} bölümü sıradaki geliştirme aşamasında eklenecek.`);
-          }}
-          style={({ pressed }) => pressed && styles.pressed}
-        >
+        <Pressable key={item.title} accessibilityRole="button" onPress={() => router.push(item.route as never)} style={({ pressed }) => pressed && styles.pressed}>
           <Card style={styles.item}>
             <View style={styles.icon}>
               <Ionicons name={item.icon} size={23} color={colors.emerald} />

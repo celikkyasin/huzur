@@ -1,6 +1,6 @@
 {
   "name": "huzur",
-  "version": "1.0.39",
+  "version": "1.0.40",
   "private": true,
   "main": "expo-router/entry",
   "scripts": {
@@ -29,6 +29,7 @@
     "expo-notifications": "~55.0.0",
     "expo-router": "~55.0.14",
     "expo-sharing": "~55.0.18",
+    "expo-speech": "~55.0.14",
     "expo-status-bar": "~55.0.0",
     "nativewind": "^4.1.23",
     "react": "19.2.0",
