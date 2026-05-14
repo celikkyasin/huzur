@@ -25,6 +25,38 @@ const statusOptions: Array<{ status: PrayerCompletionStatus; label: string; icon
   { status: "missed", label: "Kılmadım", icon: "close-circle" }
 ];
 
+function getTimeDate(date: Date, time?: string) {
+  if (!time) {
+    return null;
+  }
+
+  const [hour, minute] = time.split(":").map(Number);
+
+  if (!Number.isFinite(hour) || !Number.isFinite(minute)) {
+    return null;
+  }
+
+  const timeDate = new Date(date);
+  timeDate.setHours(hour, minute, 0, 0);
+  return timeDate;
+}
+
+function canMarkPrayer(date: Date, time?: string) {
+  const todayKey = getDateKey();
+  const dateKey = getDateKey(date);
+
+  if (dateKey < todayKey) {
+    return true;
+  }
+
+  if (dateKey > todayKey) {
+    return false;
+  }
+
+  const prayerDate = getTimeDate(date, time);
+  return prayerDate ? new Date().getTime() >= prayerDate.getTime() : false;
+}
+
 export default function PrayerContinuityScreen() {
   const [selectedDate, setSelectedDate] = useState(new Date());
   const records = usePrayerTrackerStore((state) => state.records);
@@ -97,19 +129,22 @@ export default function PrayerContinuityScreen() {
       <View style={styles.prayerList}>
         {trackedPrayers.map((prayer) => {
           const currentStatus = selectedRecord?.prayers[prayer.id];
+          const prayerTime = timeMap.get(prayer.timeId);
+          const isPrayerEnabled = canMarkPrayer(selectedDate, prayerTime);
 
           return (
-            <Card key={prayer.id} style={styles.prayerCard}>
+            <Card key={prayer.id} style={[styles.prayerCard, !isPrayerEnabled && styles.disabledPrayerCard]}>
               <View style={styles.prayerHeader}>
                 <View style={styles.prayerIcon}>
-                  <Ionicons name={prayer.icon} size={22} color={colors.emerald} />
+                  <Ionicons name={isPrayerEnabled ? prayer.icon : "lock-closed"} size={22} color={isPrayerEnabled ? colors.emerald : colors.muted} />
                 </View>
                 <View style={styles.prayerTextWrap}>
                   <Text style={styles.prayerName}>{prayer.name}</Text>
-                  <Text style={styles.prayerTime}>{timeMap.get(prayer.timeId) ?? "--:--"}</Text>
+                  <Text style={styles.prayerTime}>{prayerTime ?? "--:--"}</Text>
                 </View>
                 {currentStatus === "done" ? <Ionicons name="checkmark-circle" size={22} color={colors.emerald} /> : null}
               </View>
+              {!isPrayerEnabled ? <Text style={styles.lockedText}>Bu vakit girince işaretlenebilir.</Text> : null}
 
               <View style={styles.statusRow}>
                 {statusOptions.map((option) => {
@@ -118,11 +153,12 @@ export default function PrayerContinuityScreen() {
                     <Pressable
                       key={option.status}
                       accessibilityRole="button"
+                      disabled={!isPrayerEnabled}
                       onPress={() => void updatePrayer(prayer.id, option.status)}
-                      style={[styles.statusButton, isActive && styles.activeStatusButton, option.status === "missed" && isActive && styles.missedStatusButton]}
+                      style={[styles.statusButton, !isPrayerEnabled && styles.disabledStatusButton, isActive && styles.activeStatusButton, option.status === "missed" && isActive && styles.missedStatusButton]}
                     >
-                      <Ionicons name={option.icon} size={17} color={isActive ? colors.white : colors.emerald} />
-                      <Text style={[styles.statusText, isActive && styles.activeStatusText]}>{option.label}</Text>
+                      <Ionicons name={option.icon} size={17} color={isActive ? colors.white : isPrayerEnabled ? colors.emerald : colors.muted} />
+                      <Text style={[styles.statusText, !isPrayerEnabled && styles.disabledStatusText, isActive && styles.activeStatusText]}>{option.label}</Text>
                     </Pressable>
                   );
                 })}
@@ -233,6 +269,9 @@ const styles = StyleSheet.create({
   prayerCard: {
     gap: 14
   },
+  disabledPrayerCard: {
+    opacity: 0.72
+  },
   prayerHeader: {
     flexDirection: "row",
     alignItems: "center",
@@ -259,6 +298,11 @@ const styles = StyleSheet.create({
     marginTop: 3,
     fontWeight: "800"
   },
+  lockedText: {
+    color: colors.muted,
+    fontSize: 12,
+    fontWeight: "800"
+  },
   statusRow: {
     flexDirection: "row",
     gap: 8
@@ -279,6 +323,10 @@ const styles = StyleSheet.create({
     backgroundColor: colors.emerald,
     borderColor: colors.emerald
   },
+  disabledStatusButton: {
+    backgroundColor: colors.paper,
+    borderColor: colors.line
+  },
   missedStatusButton: {
     backgroundColor: colors.danger,
     borderColor: colors.danger
@@ -290,5 +338,8 @@ const styles = StyleSheet.create({
   },
   activeStatusText: {
     color: colors.white
+  },
+  disabledStatusText: {
+    color: colors.muted
   }
 });

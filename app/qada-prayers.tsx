@@ -24,7 +24,7 @@ export default function QadaPrayersScreen() {
       <Card variant="emerald" style={styles.summaryCard}>
         <Text style={styles.summaryLabel}>Toplam kalan kaza</Text>
         <Text style={styles.summaryValue}>{total}</Text>
-        <Text style={styles.summaryText}>Kıldıkça eksiye basarak borcunu azaltabilirsin.</Text>
+        <Text style={styles.summaryText}>Önce kalan borcunu ekle. Kaza namazı kıldığında "Kaza kıldım" ile kalan sayı azalır.</Text>
       </Card>
 
       <View style={styles.list}>
@@ -36,16 +36,17 @@ export default function QadaPrayersScreen() {
               </View>
               <View>
                 <Text style={styles.title}>{prayer.name}</Text>
-                <Text style={styles.subtitle}>Kalan kaza</Text>
+                <Text style={styles.subtitle}>{counts[prayer.id]} kaza kaldı</Text>
               </View>
             </View>
-            <View style={styles.counter}>
-              <Pressable accessibilityRole="button" onPress={() => void changeCount(prayer.id, -1)} style={styles.counterButton}>
-                <Ionicons name="remove" size={18} color={colors.emerald} />
+            <View style={styles.actions}>
+              <Pressable accessibilityRole="button" onPress={() => void changeCount(prayer.id, -1)} style={[styles.actionButton, styles.doneButton]}>
+                <Ionicons name="checkmark-circle" size={16} color={colors.emerald} />
+                <Text style={styles.actionText}>Kaza kıldım</Text>
               </Pressable>
-              <Text style={styles.count}>{counts[prayer.id]}</Text>
-              <Pressable accessibilityRole="button" onPress={() => void changeCount(prayer.id, 1)} style={styles.counterButton}>
-                <Ionicons name="add" size={18} color={colors.emerald} />
+              <Pressable accessibilityRole="button" onPress={() => void changeCount(prayer.id, 1)} style={styles.actionButton}>
+                <Ionicons name="add-circle" size={16} color={colors.emerald} />
+                <Text style={styles.actionText}>Borç ekle</Text>
               </Pressable>
             </View>
           </Card>
@@ -83,11 +84,8 @@ const styles = StyleSheet.create({
     paddingBottom: 18
   },
   item: {
-    minHeight: 84,
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    gap: 12
+    minHeight: 112,
+    gap: 14
   },
   left: {
     flex: 1,
@@ -114,24 +112,31 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: "800"
   },
-  counter: {
+  actions: {
     flexDirection: "row",
     alignItems: "center",
     gap: 8
   },
-  counterButton: {
-    width: 38,
-    height: 38,
-    borderRadius: radii.round,
+  actionButton: {
+    flex: 1,
+    minHeight: 42,
+    borderRadius: radii.md,
     backgroundColor: colors.emeraldSoft,
+    borderWidth: 1,
+    borderColor: "rgba(7,94,71,0.12)",
+    flexDirection: "row",
     alignItems: "center",
-    justifyContent: "center"
+    justifyContent: "center",
+    gap: 6,
+    paddingHorizontal: 10
   },
-  count: {
-    minWidth: 34,
-    textAlign: "center",
-    color: colors.ink,
-    fontSize: 20,
+  doneButton: {
+    backgroundColor: colors.goldSoft,
+    borderColor: "rgba(215,179,90,0.34)"
+  },
+  actionText: {
+    color: colors.emerald,
+    fontSize: 12,
     fontWeight: "900"
   }
 });
