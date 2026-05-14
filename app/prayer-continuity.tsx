@@ -25,24 +25,15 @@ const statusOptions: Array<{ status: PrayerCompletionStatus; label: string; icon
   { status: "missed", label: "Kılmadım", icon: "close-circle" }
 ];
 
-const statusTones: Record<PrayerCompletionStatus, { active: string; background: string; border: string; text: string }> = {
+const statusTones: Record<PrayerCompletionStatus, { active: string }> = {
   done: {
-    active: colors.emerald,
-    background: colors.emeraldSoft,
-    border: "rgba(7,94,71,0.18)",
-    text: colors.emerald
+    active: colors.emerald
   },
   later: {
-    active: colors.gold,
-    background: colors.goldSoft,
-    border: "rgba(215,179,90,0.36)",
-    text: colors.gold
+    active: colors.gold
   },
   missed: {
-    active: colors.danger,
-    background: "#FBECEC",
-    border: "rgba(197,83,83,0.3)",
-    text: colors.danger
+    active: colors.danger
   }
 };
 
@@ -179,13 +170,12 @@ export default function PrayerContinuityScreen() {
                       onPress={() => void updatePrayer(prayer.id, option.status)}
                       style={[
                         styles.statusButton,
-                        { backgroundColor: tone.background, borderColor: tone.border },
                         !isPrayerEnabled && styles.disabledStatusButton,
                         isActive && { backgroundColor: tone.active, borderColor: tone.active }
                       ]}
                     >
-                      <Ionicons name={option.icon} size={17} color={isActive ? colors.white : isPrayerEnabled ? tone.text : colors.muted} />
-                      <Text style={[styles.statusText, { color: tone.text }, !isPrayerEnabled && styles.disabledStatusText, isActive && styles.activeStatusText]}>{option.label}</Text>
+                      <Ionicons name={option.icon} size={17} color={isActive ? colors.white : isPrayerEnabled ? colors.emerald : colors.muted} />
+                      <Text style={[styles.statusText, !isPrayerEnabled && styles.disabledStatusText, isActive && styles.activeStatusText]}>{option.label}</Text>
                     </Pressable>
                   );
                 })}
