@@ -238,9 +238,13 @@ function renderAdmin(response, token, config) {
     listEl.addEventListener("change", async (event) => {
       const uploadIndex = event.target.dataset.upload;
       if (uploadIndex === undefined || !event.target.files?.[0]) return;
+      readForm();
       const token = document.getElementById("admin-token").value;
       const file = event.target.files[0];
-      setStatus("Görsel yükleniyor...", "");
+      const item = event.target.closest(".item");
+      const preview = item?.querySelector(".preview");
+      if (preview) preview.src = URL.createObjectURL(file);
+      setStatus(file.name + " seçildi, yükleniyor...", "");
       try {
         const imageData = await toDataUrl(file);
         const response = await fetch("/friday-messages/upload?token=" + encodeURIComponent(token), {
@@ -251,17 +255,30 @@ function renderAdmin(response, token, config) {
         const body = await response.json();
         if (!response.ok || !body.ok) throw new Error(body.error || body.detail || "Yükleme başarısız.");
         messages[Number(uploadIndex)].imageUrl = body.url;
-        render();
+        const imageInput = item?.querySelector('[data-field="imageUrl"]');
+        if (imageInput) imageInput.value = body.url;
+        if (preview) preview.src = body.url;
         setStatus("Görsel yüklendi. Kaydet butonuna basınca uygulamada yayınlanır.", "ok");
       } catch (error) {
         setStatus(error instanceof Error ? error.message : "Görsel yüklenemedi.", "error");
       }
     });
 
+    listEl.addEventListener("input", (event) => {
+      if (event.target.dataset.field !== "imageUrl") return;
+      const item = event.target.closest(".item");
+      const index = Number(item?.dataset.index);
+      messages[index].imageUrl = event.target.value;
+      const preview = item?.querySelector(".preview");
+      if (preview) preview.src = event.target.value;
+    });
+
     listEl.addEventListener("click", (event) => {
-      const remove = event.target.dataset.remove;
-      const moveUp = event.target.dataset.moveUp;
-      const moveDown = event.target.dataset.moveDown;
+      const actionButton = event.target.closest("button[data-remove], button[data-move-up], button[data-move-down]");
+      if (!actionButton) return;
+      const remove = actionButton.dataset.remove;
+      const moveUp = actionButton.dataset.moveUp;
+      const moveDown = actionButton.dataset.moveDown;
       readForm();
       if (remove !== undefined) messages.splice(Number(remove), 1);
       if (moveUp !== undefined && Number(moveUp) > 0) {
