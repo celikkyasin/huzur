@@ -402,6 +402,10 @@ export default function SettingsScreen() {
             <Ionicons name="play-circle" size={15} color={colors.emerald} />
             <Text style={styles.rewardRuleText}>Dinlenen dakika: +1</Text>
           </View>
+          <View style={styles.rewardRule}>
+            <Ionicons name="checkmark-circle" size={15} color={colors.emerald} />
+            <Text style={styles.rewardRuleText}>Namaz takibi: vakit +2, gün +10</Text>
+          </View>
         </View>
 
         <View style={styles.leaderboard}>

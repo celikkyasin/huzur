@@ -11,6 +11,7 @@ import { ScreenContainer } from "@/components/ui/ScreenContainer";
 import { SectionTitle } from "@/components/ui/SectionTitle";
 import { getDailyAyah } from "@/data/mock";
 import { useLocationStore } from "@/store/locationStore";
+import { getCompletionStreak, getDateKey, getPrayerProgress, usePrayerTrackerStore } from "@/store/prayerTrackerStore";
 import { usePrayerTimesStore } from "@/store/prayerTimesStore";
 import { colors, radii, typography } from "@/theme";
 import { getPrayerWindow } from "@/utils/prayerTimes";
@@ -40,8 +41,11 @@ export default function HomeScreen() {
   const prayerTimesError = usePrayerTimesStore((state) => state.errorMessage);
   const prayerTimesSource = usePrayerTimesStore((state) => state.sourceLabel);
   const loadPrayerTimes = usePrayerTimesStore((state) => state.loadPrayerTimes);
+  const prayerRecords = usePrayerTrackerStore((state) => state.records);
   const ayah = getDailyAyah();
   const visiblePrayerTimes = getPrayerWindow(prayerTimes);
+  const prayerProgress = getPrayerProgress(prayerRecords, getDateKey());
+  const prayerStreak = getCompletionStreak(prayerRecords);
 
   useEffect(() => {
     void loadPrayerTimes({ city, district, country, latitude, longitude });
@@ -108,6 +112,25 @@ export default function HomeScreen() {
           <QuickActionCard key={item.title} title={item.title} icon={item.icon} onPress={() => router.push(item.route as never)} />
         ))}
       </View>
+
+      <Pressable accessibilityRole="button" onPress={() => router.push("/prayer-continuity" as never)} style={({ pressed }) => pressed && styles.pressed}>
+        <Card style={styles.continuityCard}>
+          <View style={styles.continuityIcon}>
+            <Ionicons name="calendar" size={22} color={colors.emerald} />
+          </View>
+          <View style={styles.continuityTextWrap}>
+            <Text style={styles.continuityTitle}>Namaz Devamlılığı</Text>
+            <Text style={styles.continuitySubtitle}>
+              {prayerProgress.isComplete
+                ? prayerStreak > 1
+                  ? `${prayerStreak} gündür tüm namazları tamamladın`
+                  : "Bugünün tüm namazları tamamlandı"
+                : `Bugün ${prayerProgress.completed}/${prayerProgress.total} vakit tamamlandı`}
+            </Text>
+          </View>
+          <Ionicons name="chevron-forward" size={20} color={colors.muted} />
+        </Card>
+      </Pressable>
 
       <View style={styles.ayahTitleRow}>
         <Text style={styles.ayahTitle}>Günün Ayeti</Text>
@@ -206,6 +229,36 @@ const styles = StyleSheet.create({
   },
   nextText: {
     color: colors.white
+  },
+  continuityCard: {
+    minHeight: 78,
+    marginTop: 12,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12
+  },
+  continuityIcon: {
+    width: 46,
+    height: 46,
+    borderRadius: radii.round,
+    backgroundColor: colors.emeraldSoft,
+    alignItems: "center",
+    justifyContent: "center"
+  },
+  continuityTextWrap: {
+    flex: 1
+  },
+  continuityTitle: {
+    color: colors.ink,
+    fontWeight: "900",
+    fontSize: 15
+  },
+  continuitySubtitle: {
+    color: colors.muted,
+    marginTop: 3,
+    fontSize: 12,
+    lineHeight: 17,
+    fontWeight: "800"
   },
   ayahTitleRow: {
     marginTop: 10,

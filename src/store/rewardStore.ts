@@ -5,7 +5,7 @@ import { fetchRewardLeaderboard, isRewardsApiConfigured, syncRewardScore, type L
 const REWARD_STORAGE_KEY = "huzur.rewards.v1";
 const MAX_HISTORY_ITEMS = 30;
 
-export type RewardAction = "dhikr33" | "dhikr99" | "fridayShare" | "surahListen" | "rewardedAd";
+export type RewardAction = "dhikr33" | "dhikr99" | "fridayShare" | "surahListen" | "rewardedAd" | "prayerDone" | "prayerCompleteDay";
 
 export type RewardTransaction = {
   id: string;

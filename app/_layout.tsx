@@ -8,6 +8,7 @@ import { HomeLaunchGate } from "@/components/HomeLaunchGate";
 import { LocationPermissionGate } from "@/components/LocationPermissionGate";
 import { QuranGate } from "@/components/QuranGate";
 import { RewardGate } from "@/components/RewardGate";
+import { PrayerTrackerGate } from "@/components/PrayerTrackerGate";
 import { colors } from "@/theme";
 
 export const unstable_settings = {
@@ -23,6 +24,7 @@ export default function RootLayout() {
       <FavoriteDuaGate />
       <QuranGate />
       <RewardGate />
+      <PrayerTrackerGate />
       <StatusBar style="dark" backgroundColor={colors.cream} />
       <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: colors.cream } }}>
         <Stack.Screen name="(tabs)" />
@@ -31,6 +33,8 @@ export default function RootLayout() {
         <Stack.Screen name="dhikr" />
         <Stack.Screen name="mosques" />
         <Stack.Screen name="friday-messages" />
+        <Stack.Screen name="prayer-continuity" />
+        <Stack.Screen name="qada-prayers" />
         <Stack.Screen name="story-editor" />
         <Stack.Screen name="settings" />
       </Stack>
