@@ -149,6 +149,20 @@ function createId(value, index) {
   return source || `friday-${index + 1}`;
 }
 
+function makeUniqueId(id, usedIds, index) {
+  const base = createId(id, index);
+  let nextId = base;
+  let suffix = 2;
+
+  while (usedIds.has(nextId)) {
+    nextId = `${base}-${suffix}`;
+    suffix += 1;
+  }
+
+  usedIds.add(nextId);
+  return nextId;
+}
+
 function normalizeMessage(item, index) {
   const message = normalizeText(item?.message, 260);
   const imageUrl = normalizeUrl(item?.imageUrl);
@@ -170,7 +184,41 @@ function normalizeMessage(item, index) {
 
 function normalizeMessages(value) {
   const source = Array.isArray(value) ? value : DEFAULT_MESSAGES;
-  return source.map(normalizeMessage).filter(Boolean).slice(0, MAX_MESSAGES);
+  const usedIds = new Set();
+
+  return source
+    .map((item, index) => {
+      const message = normalizeMessage(item, index);
+      if (!message) {
+        return null;
+      }
+
+      message.id = makeUniqueId(message.id, usedIds, index);
+      return message;
+    })
+    .filter(Boolean)
+    .slice(0, MAX_MESSAGES);
+}
+
+function mergeMessages(existingMessages, incomingMessages) {
+  const merged = [];
+  const seen = new Set();
+
+  for (const message of [...existingMessages, ...incomingMessages]) {
+    const key = message.imageUrl || message.id;
+    if (seen.has(key)) {
+      const index = merged.findIndex((item) => (item.imageUrl || item.id) === key);
+      if (index >= 0) {
+        merged[index] = { ...merged[index], ...message };
+      }
+      continue;
+    }
+
+    seen.add(key);
+    merged.push(message);
+  }
+
+  return normalizeMessages(merged).slice(0, MAX_MESSAGES);
 }
 
 async function getFridayMessagesConfig() {
@@ -186,7 +234,10 @@ async function getFridayMessagesConfig() {
 }
 
 async function setFridayMessagesConfig(payload) {
-  const messages = normalizeMessages(payload.messages);
+  const incomingMessages = normalizeMessages(payload.messages);
+  const currentConfig = await getFridayMessagesConfig();
+  const replaceAll = payload.mode === "replace";
+  const messages = replaceAll ? incomingMessages : mergeMessages(currentConfig.messages, incomingMessages);
   const config = {
     messages,
     updatedAt: new Date().toISOString()
