@@ -10,6 +10,7 @@ export type AllahName = {
 };
 
 const rows = [
+  ["الله", "Allah", "Varlığı zorunlu olan, bütün kemal sıfatları kendinde toplayan yüce zat"],
   ["الرحمن", "Er-Rahman", "Dünyada bütün varlıklara merhamet eden"],
   ["الرحيم", "Er-Rahim", "Ahirette müminlere özel rahmet eden"],
   ["الملك", "El-Melik", "Mülkün ve hükümranlığın sahibi"],
@@ -76,7 +77,6 @@ const rows = [
   ["الواجد", "El-Vacid", "Dilediğini bulan, zengin olan"],
   ["الماجد", "El-Macid", "Şanı ve cömertliği bol olan"],
   ["الواحد", "El-Vahid", "Tek olan"],
-  ["الأحد", "El-Ahad", "Tek ve benzersiz olan"],
   ["الصمد", "Es-Samed", "Her şeyin muhtaç olduğu"],
   ["القادر", "El-Kadir", "Her şeye gücü yeten"],
   ["المقتدر", "El-Muktedir", "Kudreti tam olan"],
