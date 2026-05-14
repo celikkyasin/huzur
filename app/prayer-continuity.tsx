@@ -25,6 +25,27 @@ const statusOptions: Array<{ status: PrayerCompletionStatus; label: string; icon
   { status: "missed", label: "Kılmadım", icon: "close-circle" }
 ];
 
+const statusTones: Record<PrayerCompletionStatus, { active: string; background: string; border: string; text: string }> = {
+  done: {
+    active: colors.emerald,
+    background: colors.emeraldSoft,
+    border: "rgba(7,94,71,0.18)",
+    text: colors.emerald
+  },
+  later: {
+    active: colors.gold,
+    background: colors.goldSoft,
+    border: "rgba(215,179,90,0.36)",
+    text: colors.gold
+  },
+  missed: {
+    active: colors.danger,
+    background: "#FBECEC",
+    border: "rgba(197,83,83,0.3)",
+    text: colors.danger
+  }
+};
+
 function getTimeDate(date: Date, time?: string) {
   if (!time) {
     return null;
@@ -149,16 +170,22 @@ export default function PrayerContinuityScreen() {
               <View style={styles.statusRow}>
                 {statusOptions.map((option) => {
                   const isActive = currentStatus === option.status;
+                  const tone = statusTones[option.status];
                   return (
                     <Pressable
                       key={option.status}
                       accessibilityRole="button"
                       disabled={!isPrayerEnabled}
                       onPress={() => void updatePrayer(prayer.id, option.status)}
-                      style={[styles.statusButton, !isPrayerEnabled && styles.disabledStatusButton, isActive && styles.activeStatusButton, option.status === "missed" && isActive && styles.missedStatusButton]}
+                      style={[
+                        styles.statusButton,
+                        { backgroundColor: tone.background, borderColor: tone.border },
+                        !isPrayerEnabled && styles.disabledStatusButton,
+                        isActive && { backgroundColor: tone.active, borderColor: tone.active }
+                      ]}
                     >
-                      <Ionicons name={option.icon} size={17} color={isActive ? colors.white : isPrayerEnabled ? colors.emerald : colors.muted} />
-                      <Text style={[styles.statusText, !isPrayerEnabled && styles.disabledStatusText, isActive && styles.activeStatusText]}>{option.label}</Text>
+                      <Ionicons name={option.icon} size={17} color={isActive ? colors.white : isPrayerEnabled ? tone.text : colors.muted} />
+                      <Text style={[styles.statusText, { color: tone.text }, !isPrayerEnabled && styles.disabledStatusText, isActive && styles.activeStatusText]}>{option.label}</Text>
                     </Pressable>
                   );
                 })}
@@ -319,17 +346,9 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: "rgba(7,94,71,0.1)"
   },
-  activeStatusButton: {
-    backgroundColor: colors.emerald,
-    borderColor: colors.emerald
-  },
   disabledStatusButton: {
     backgroundColor: colors.paper,
     borderColor: colors.line
-  },
-  missedStatusButton: {
-    backgroundColor: colors.danger,
-    borderColor: colors.danger
   },
   statusText: {
     color: colors.emerald,

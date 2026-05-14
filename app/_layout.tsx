@@ -35,6 +35,7 @@ export default function RootLayout() {
         <Stack.Screen name="friday-messages" />
         <Stack.Screen name="prayer-continuity" />
         <Stack.Screen name="qada-prayers" />
+        <Stack.Screen name="rewards" />
         <Stack.Screen name="story-editor" />
         <Stack.Screen name="settings" />
       </Stack>

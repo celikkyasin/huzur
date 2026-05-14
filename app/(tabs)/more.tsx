@@ -18,10 +18,10 @@ type MenuItem = {
 const menuItems: MenuItem[] = [
   { title: "Namaz Devamlılığı", subtitle: "Gün gün 5 vakit namaz takibi", icon: "calendar", route: "/prayer-continuity", badge: "Yeni" },
   { title: "Kaza Namazı Takibi", subtitle: "Kalan kaza namazlarını düzenli azalt", icon: "repeat", route: "/qada-prayers", badge: "Yeni" },
-  { title: "Puan Tablosu ve Ödüller", subtitle: "Sıralama, ödüller ve başvuru alanı", icon: "trophy", route: "/settings" },
-  { title: "Ayarlar", subtitle: "Bildirimler, profil ve uygulama tercihleri", icon: "settings", route: "/settings" },
   { title: "Allah'ın 99 İsmi", subtitle: "Görsel kartlar ve sesli okuma hazırlanıyor", icon: "sparkles" },
-  { title: "Cuma Hutbeleri", subtitle: "Her cuma hutbesi uzaktan eklenecek", icon: "document-text" }
+  { title: "Cuma Hutbeleri", subtitle: "Her cuma hutbesi uzaktan eklenecek", icon: "document-text" },
+  { title: "Puan Tablosu ve Ödüller", subtitle: "Sıralama, ödüller ve başvuru alanı", icon: "trophy", route: "/rewards" },
+  { title: "Ayarlar", subtitle: "Bildirimler, profil ve uygulama tercihleri", icon: "settings", route: "/settings" }
 ];
 
 export default function MoreScreen() {
