@@ -3,7 +3,7 @@
     "name": "Huzur",
     "slug": "huzur",
     "scheme": "huzur",
-    "version": "1.0.44",
+    "version": "1.0.45",
     "orientation": "portrait",
     "userInterfaceStyle": "light",
     "ios": {

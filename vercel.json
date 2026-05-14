@@ -37,6 +37,18 @@
       "destination": "/api/friday-messages/admin"
     },
     {
+      "source": "/names-of-allah/config",
+      "destination": "/api/names-of-allah/config"
+    },
+    {
+      "source": "/names-of-allah/upload",
+      "destination": "/api/names-of-allah/upload"
+    },
+    {
+      "source": "/names-of-allah/admin",
+      "destination": "/api/names-of-allah/admin"
+    },
+    {
       "source": "/leaderboard",
       "destination": "/api/leaderboard"
     }
