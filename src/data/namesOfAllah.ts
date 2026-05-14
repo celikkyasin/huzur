@@ -5,6 +5,8 @@ export type AllahName = {
   transliteration: string;
   meaning: string;
   note: string;
+  imageUrl?: string;
+  aspectRatio?: number;
 };
 
 const rows = [
