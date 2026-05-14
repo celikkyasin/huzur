@@ -38,15 +38,15 @@
     },
     {
       "source": "/names-of-allah/config",
-      "destination": "/api/names-of-allah/config"
+      "destination": "/api/names-of-allah?route=config"
     },
     {
       "source": "/names-of-allah/upload",
-      "destination": "/api/names-of-allah/upload"
+      "destination": "/api/names-of-allah?route=upload"
     },
     {
       "source": "/names-of-allah/admin",
-      "destination": "/api/names-of-allah/admin"
+      "destination": "/api/names-of-allah?route=admin"
     },
     {
       "source": "/leaderboard",
