@@ -74,6 +74,7 @@ const rows = [
   ["الواجد", "El-Vacid", "Dilediğini bulan, zengin olan"],
   ["الماجد", "El-Macid", "Şanı ve cömertliği bol olan"],
   ["الواحد", "El-Vahid", "Tek olan"],
+  ["الأحد", "El-Ahad", "Tek ve benzersiz olan"],
   ["الصمد", "Es-Samed", "Her şeyin muhtaç olduğu"],
   ["القادر", "El-Kadir", "Her şeye gücü yeten"],
   ["المقتدر", "El-Muktedir", "Kudreti tam olan"],
