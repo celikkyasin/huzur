@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Alert, Image, Modal, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { Alert, FlatList, Image, Modal, Pressable, ScrollView, StyleSheet, Text, View, useWindowDimensions, type NativeScrollEvent, type NativeSyntheticEvent } from "react-native";
 import { Asset } from "expo-asset";
 import * as FileSystem from "expo-file-system/legacy";
 import * as MediaLibrary from "expo-media-library";
@@ -38,8 +38,30 @@ async function getMessageImageUri(message: FridayMessage) {
 }
 
 export default function FridayMessagesScreen() {
-  const [previewMessage, setPreviewMessage] = useState<FridayMessage | null>(null);
+  const { width: screenWidth, height: screenHeight } = useWindowDimensions();
+  const [previewIndex, setPreviewIndex] = useState<number | null>(null);
+  const [previewStartIndex, setPreviewStartIndex] = useState(0);
   const awardReward = useRewardStore((state) => state.awardReward);
+  const previewMessage = previewIndex === null ? null : fridayMessages[previewIndex] ?? null;
+  const previewImageHeight = Math.max(320, screenHeight - 190);
+
+  const openPreview = (message: FridayMessage) => {
+    const messageIndex = fridayMessages.findIndex((item) => item.id === message.id);
+    const nextIndex = messageIndex >= 0 ? messageIndex : 0;
+    setPreviewStartIndex(nextIndex);
+    setPreviewIndex(nextIndex);
+  };
+
+  const closePreview = () => setPreviewIndex(null);
+
+  const handlePreviewScrollEnd = (event: NativeSyntheticEvent<NativeScrollEvent>) => {
+    const pageHeight = event.nativeEvent.layoutMeasurement.height;
+    const nextIndex = Math.round(event.nativeEvent.contentOffset.y / pageHeight);
+
+    if (nextIndex >= 0 && nextIndex < fridayMessages.length) {
+      setPreviewIndex(nextIndex);
+    }
+  };
 
   const shareMessage = async (message: FridayMessage) => {
     try {
@@ -106,19 +128,38 @@ export default function FridayMessagesScreen() {
       </ScrollView>
 
       <SectionTitle title="Öne Çıkan" />
-      <MessageCard message={fridayMessages[0]} featured onShare={() => shareMessage(fridayMessages[0])} onDownload={() => downloadMessage(fridayMessages[0])} onPreview={() => setPreviewMessage(fridayMessages[0])} />
+      <MessageCard message={fridayMessages[0]} featured onShare={() => shareMessage(fridayMessages[0])} onDownload={() => downloadMessage(fridayMessages[0])} onPreview={() => openPreview(fridayMessages[0])} />
 
       <SectionTitle title="Hazır Kartlar" />
       {fridayMessages.slice(1).map((message) => (
-        <MessageCard key={message.id} message={message} onShare={() => shareMessage(message)} onDownload={() => downloadMessage(message)} onPreview={() => setPreviewMessage(message)} />
+        <MessageCard key={message.id} message={message} onShare={() => shareMessage(message)} onDownload={() => downloadMessage(message)} onPreview={() => openPreview(message)} />
       ))}
 
-      <Modal visible={!!previewMessage} transparent animationType="fade" onRequestClose={() => setPreviewMessage(null)}>
+      <Modal visible={previewIndex !== null} transparent animationType="fade" onRequestClose={closePreview}>
         <View style={styles.previewBackdrop}>
-          <Pressable accessibilityRole="button" accessibilityLabel="Tam ekranı kapat" onPress={() => setPreviewMessage(null)} style={styles.closeButton}>
+          <View style={styles.previewCounter}>
+            <Text style={styles.previewCounterText}>
+              {(previewIndex ?? 0) + 1} / {fridayMessages.length}
+            </Text>
+          </View>
+          <Pressable accessibilityRole="button" accessibilityLabel="Tam ekranı kapat" onPress={closePreview} style={styles.closeButton}>
             <Ionicons name="close" size={26} color={colors.white} />
           </Pressable>
-          {previewMessage?.image ? <Image source={previewMessage.image} style={styles.previewImage} resizeMode="contain" /> : null}
+          <FlatList
+            key={`preview-${previewStartIndex}-${screenHeight}`}
+            data={fridayMessages}
+            keyExtractor={(item) => item.id}
+            pagingEnabled
+            showsVerticalScrollIndicator={false}
+            initialScrollIndex={previewStartIndex}
+            getItemLayout={(_, index) => ({ length: screenHeight, offset: screenHeight * index, index })}
+            onMomentumScrollEnd={handlePreviewScrollEnd}
+            renderItem={({ item }) => (
+              <View style={[styles.previewPage, { width: screenWidth, height: screenHeight }]}>
+                {item.image ? <Image source={item.image} style={[styles.previewImage, { width: screenWidth, height: previewImageHeight }]} resizeMode="contain" /> : null}
+              </View>
+            )}
+          />
           {previewMessage ? (
             <View style={styles.previewActions}>
               <Pressable accessibilityRole="button" accessibilityLabel="Paylaş" onPress={() => shareMessage(previewMessage)} style={styles.previewActionButton}>
@@ -180,10 +221,31 @@ const styles = StyleSheet.create({
   },
   previewBackdrop: {
     flex: 1,
-    backgroundColor: "rgba(0,0,0,0.94)",
+    backgroundColor: "rgba(0,0,0,0.94)"
+  },
+  previewPage: {
     alignItems: "center",
     justifyContent: "center",
-    padding: 18
+    paddingTop: 78,
+    paddingBottom: 112
+  },
+  previewCounter: {
+    position: "absolute",
+    top: 52,
+    left: 18,
+    zIndex: 2,
+    minWidth: 62,
+    height: 38,
+    borderRadius: radii.round,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "rgba(255,255,255,0.14)",
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.2)"
+  },
+  previewCounterText: {
+    color: colors.white,
+    fontWeight: "900"
   },
   closeButton: {
     position: "absolute",
@@ -198,17 +260,20 @@ const styles = StyleSheet.create({
     backgroundColor: "rgba(255,255,255,0.14)"
   },
   previewImage: {
-    width: "100%",
-    height: "78%"
+    maxWidth: "100%"
   },
   previewActions: {
+    position: "absolute",
+    bottom: 34,
+    left: 18,
+    right: 18,
     flexDirection: "row",
     gap: 12,
-    marginTop: 18
+    zIndex: 2
   },
   previewActionButton: {
-    minWidth: 132,
-    height: 52,
+    flex: 1,
+    height: 54,
     borderRadius: radii.round,
     backgroundColor: colors.white,
     flexDirection: "row",
