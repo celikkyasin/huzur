@@ -34,6 +34,10 @@ function getImageAspectRatio(message: FridayMessage) {
   return 9 / 16;
 }
 
+function getMessageCategory(message: FridayMessage) {
+  return fridayCategories.includes(message.category) ? message.category : fridayCategories[0];
+}
+
 async function getMessageImageUri(message: FridayMessage) {
   if (!FileSystem.cacheDirectory) {
     return null;
@@ -77,6 +81,7 @@ export default function FridayMessagesScreen() {
   const { width: screenWidth, height: screenHeight } = useWindowDimensions();
   const [previewIndex, setPreviewIndex] = useState<number | null>(null);
   const [previewStartIndex, setPreviewStartIndex] = useState(0);
+  const [selectedCategory, setSelectedCategory] = useState(fridayCategories[0]);
   const [remoteMessages, setRemoteMessages] = useState<FridayMessage[] | null>(null);
   const awardReward = useRewardStore((state) => state.awardReward);
   const messages = useMemo(() => {
@@ -88,7 +93,8 @@ export default function FridayMessagesScreen() {
     const remoteAdditions = remoteMessages.filter((message) => !localIds.has(message.id));
     return [...fridayMessages, ...remoteAdditions];
   }, [remoteMessages]);
-  const previewMessage = previewIndex === null ? null : messages[previewIndex] ?? null;
+  const visibleMessages = useMemo(() => messages.filter((message) => getMessageCategory(message) === selectedCategory), [messages, selectedCategory]);
+  const previewMessage = previewIndex === null ? null : visibleMessages[previewIndex] ?? null;
   const previewImageHeight = Math.max(320, screenHeight - 190);
 
   useEffect(() => {
@@ -106,7 +112,7 @@ export default function FridayMessagesScreen() {
   }, []);
 
   const openPreview = (message: FridayMessage) => {
-    const messageIndex = messages.findIndex((item) => item.id === message.id);
+    const messageIndex = visibleMessages.findIndex((item) => item.id === message.id);
     const nextIndex = messageIndex >= 0 ? messageIndex : 0;
     setPreviewStartIndex(nextIndex);
     setPreviewIndex(nextIndex);
@@ -118,7 +124,7 @@ export default function FridayMessagesScreen() {
     const pageHeight = event.nativeEvent.layoutMeasurement.height;
     const nextIndex = Math.round(event.nativeEvent.contentOffset.y / pageHeight);
 
-    if (nextIndex >= 0 && nextIndex < messages.length) {
+    if (nextIndex >= 0 && nextIndex < visibleMessages.length) {
       setPreviewIndex(nextIndex);
     }
   };
@@ -180,18 +186,22 @@ export default function FridayMessagesScreen() {
       </View>
 
       <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.categories}>
-        {fridayCategories.map((category, index) => (
-          <View key={category} style={[styles.category, index === 0 && styles.activeCategory]}>
-            <Text style={[styles.categoryText, index === 0 && styles.activeCategoryText]}>{category}</Text>
-          </View>
-        ))}
+        {fridayCategories.map((category) => {
+          const isActive = selectedCategory === category;
+
+          return (
+            <Pressable key={category} accessibilityRole="button" accessibilityState={{ selected: isActive }} onPress={() => setSelectedCategory(category)} style={[styles.category, isActive && styles.activeCategory]}>
+              <Text style={[styles.categoryText, isActive && styles.activeCategoryText]}>{category}</Text>
+            </Pressable>
+          );
+        })}
       </ScrollView>
 
       <SectionTitle title="Öne Çıkan" />
-      <MessageCard message={messages[0]} featured onShare={() => shareMessage(messages[0])} onDownload={() => downloadMessage(messages[0])} onPreview={() => openPreview(messages[0])} />
+      {visibleMessages[0] ? <MessageCard message={visibleMessages[0]} featured onShare={() => shareMessage(visibleMessages[0])} onDownload={() => downloadMessage(visibleMessages[0])} onPreview={() => openPreview(visibleMessages[0])} /> : null}
 
       <SectionTitle title="Hazır Kartlar" />
-      {messages.slice(1).map((message) => (
+      {visibleMessages.slice(1).map((message) => (
         <MessageCard key={message.id} message={message} onShare={() => shareMessage(message)} onDownload={() => downloadMessage(message)} onPreview={() => openPreview(message)} />
       ))}
 
@@ -199,15 +209,15 @@ export default function FridayMessagesScreen() {
         <View style={styles.previewBackdrop}>
           <View style={styles.previewCounter}>
             <Text style={styles.previewCounterText}>
-              {(previewIndex ?? 0) + 1} / {messages.length}
+              {(previewIndex ?? 0) + 1} / {visibleMessages.length}
             </Text>
           </View>
           <Pressable accessibilityRole="button" accessibilityLabel="Tam ekranı kapat" onPress={closePreview} style={styles.closeButton}>
             <Ionicons name="close" size={26} color={colors.white} />
           </Pressable>
           <FlatList
-            key={`preview-${previewStartIndex}-${screenHeight}-${messages.length}`}
-            data={messages}
+            key={`preview-${previewStartIndex}-${screenHeight}-${visibleMessages.length}-${selectedCategory}`}
+            data={visibleMessages}
             keyExtractor={(item) => item.id}
             pagingEnabled
             showsVerticalScrollIndicator={false}
