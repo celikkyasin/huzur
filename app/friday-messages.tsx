@@ -79,7 +79,15 @@ export default function FridayMessagesScreen() {
   const [previewStartIndex, setPreviewStartIndex] = useState(0);
   const [remoteMessages, setRemoteMessages] = useState<FridayMessage[] | null>(null);
   const awardReward = useRewardStore((state) => state.awardReward);
-  const messages = useMemo(() => (remoteMessages?.length ? remoteMessages : fridayMessages), [remoteMessages]);
+  const messages = useMemo(() => {
+    if (!remoteMessages?.length) {
+      return fridayMessages;
+    }
+
+    const localIds = new Set(fridayMessages.map((message) => message.id));
+    const remoteAdditions = remoteMessages.filter((message) => !localIds.has(message.id));
+    return [...fridayMessages, ...remoteAdditions];
+  }, [remoteMessages]);
   const previewMessage = previewIndex === null ? null : messages[previewIndex] ?? null;
   const previewImageHeight = Math.max(320, screenHeight - 190);
 
