@@ -1,6 +1,6 @@
 {
   "name": "huzur",
-  "version": "1.0.38",
+  "version": "1.0.39",
   "private": true,
   "main": "expo-router/entry",
   "scripts": {

@@ -215,7 +215,7 @@ export default function RewardsScreen() {
           </View>
           <View style={styles.rewardRule}>
             <Ionicons name="share-social" size={15} color={colors.emerald} />
-            <Text style={styles.rewardRuleText}>Cuma paylaşımı: +2</Text>
+            <Text style={styles.rewardRuleText}>Cuma günü ilk paylaşım: +2</Text>
           </View>
           <View style={styles.rewardRule}>
             <Ionicons name="play-circle" size={15} color={colors.emerald} />

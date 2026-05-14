@@ -23,6 +23,7 @@ type StoredRewardState = {
   monthlyPoints: number;
   weekKey: string;
   monthKey: string;
+  fridayShareRewardDates: string[];
   history: RewardTransaction[];
 };
 
@@ -58,6 +59,10 @@ function getMonthKey(date = new Date()) {
   return `${date.getFullYear()}-${(date.getMonth() + 1).toString().padStart(2, "0")}`;
 }
 
+function getDateKey(date = new Date()) {
+  return `${date.getFullYear()}-${(date.getMonth() + 1).toString().padStart(2, "0")}-${date.getDate().toString().padStart(2, "0")}`;
+}
+
 function createUserCode() {
   return `HZR-${Math.floor(10000 + Math.random() * 90000)}`;
 }
@@ -70,6 +75,7 @@ function createDefaultState(): StoredRewardState {
     monthlyPoints: 0,
     weekKey: getWeekKey(),
     monthKey: getMonthKey(),
+    fridayShareRewardDates: [],
     history: []
   };
 }
@@ -80,6 +86,7 @@ function normalizeStoredState(stored?: Partial<StoredRewardState> | null): Store
     ...defaults,
     ...stored,
     userCode: stored?.userCode || defaults.userCode,
+    fridayShareRewardDates: Array.isArray(stored?.fridayShareRewardDates) ? stored.fridayShareRewardDates.slice(-60) : [],
     history: Array.isArray(stored?.history) ? stored.history.slice(0, MAX_HISTORY_ITEMS) : []
   };
 
@@ -132,6 +139,16 @@ export const useRewardStore = create<RewardState>((set, get) => ({
     }
 
     const state = normalizeStoredState(get());
+    const today = new Date();
+    const todayKey = getDateKey(today);
+
+    if (action === "fridayShare") {
+      const isFriday = today.getDay() === 5;
+      if (!isFriday || state.fridayShareRewardDates.includes(todayKey)) {
+        return null;
+      }
+    }
+
     const transaction: RewardTransaction = {
       id: `${Date.now()}-${Math.floor(Math.random() * 10000)}`,
       action,
@@ -145,6 +162,7 @@ export const useRewardStore = create<RewardState>((set, get) => ({
       totalPoints: state.totalPoints + points,
       weeklyPoints: state.weeklyPoints + points,
       monthlyPoints: state.monthlyPoints + points,
+      fridayShareRewardDates: action === "fridayShare" ? [...state.fridayShareRewardDates, todayKey].slice(-60) : state.fridayShareRewardDates,
       history: [transaction, ...state.history].slice(0, MAX_HISTORY_ITEMS)
     };
 
