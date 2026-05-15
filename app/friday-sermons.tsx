@@ -4,7 +4,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { AppHeader } from "@/components/AppHeader";
 import { Card } from "@/components/ui/Card";
 import { ScreenContainer } from "@/components/ui/ScreenContainer";
-import { fridayKhutbahMonths, getKhutbahPreview, latestFridayKhutbah } from "@/data/fridayKhutbahs";
+import { fridayKhutbahMonths, getKhutbahPreview, getKhutbahYoutubeUrl, latestFridayKhutbah } from "@/data/fridayKhutbahs";
 import { colors, radii, typography } from "@/theme";
 
 export default function FridaySermonsScreen() {
@@ -80,15 +80,26 @@ export default function FridaySermonsScreen() {
                           </View>
                           <Text style={styles.previewText}>{getKhutbahPreview(khutbah.id)}</Text>
                         </View>
-                        <Pressable
-                          accessibilityRole="button"
-                          accessibilityLabel={`${khutbah.title} hutbesinin devamını Diyanet kaynağında aç`}
-                          onPress={() => Linking.openURL(khutbah.sourceUrl)}
-                          style={styles.sourceButton}
-                        >
-                          <Ionicons name="open-outline" size={18} color={colors.emerald} />
-                          <Text style={styles.sourceButtonText}>Devamını Diyanet'te oku</Text>
-                        </Pressable>
+                        <View style={styles.actionRow}>
+                          <Pressable
+                            accessibilityRole="button"
+                            accessibilityLabel={`${khutbah.title} hutbesinin devamını Diyanet kaynağında aç`}
+                            onPress={() => Linking.openURL(khutbah.sourceUrl)}
+                            style={styles.sourceButton}
+                          >
+                            <Ionicons name="open-outline" size={18} color={colors.emerald} />
+                            <Text style={styles.sourceButtonText}>Devamını Diyanet'te oku</Text>
+                          </Pressable>
+                          <Pressable
+                            accessibilityRole="button"
+                            accessibilityLabel={`${khutbah.title} hutbesi videosunu YouTube'da ara`}
+                            onPress={() => Linking.openURL(getKhutbahYoutubeUrl(khutbah))}
+                            style={[styles.sourceButton, styles.youtubeButton]}
+                          >
+                            <Ionicons name="logo-youtube" size={18} color="#B42318" />
+                            <Text style={[styles.sourceButtonText, styles.youtubeButtonText]}>YouTube'da izle</Text>
+                          </Pressable>
+                        </View>
                       </View>
                     );
                   })}
@@ -279,6 +290,11 @@ const styles = StyleSheet.create({
     lineHeight: 21,
     fontWeight: "700"
   },
+  actionRow: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 10
+  },
   sourceButton: {
     minHeight: 42,
     alignSelf: "flex-start",
@@ -292,5 +308,11 @@ const styles = StyleSheet.create({
   sourceButtonText: {
     color: colors.emerald,
     fontWeight: "900"
+  },
+  youtubeButton: {
+    backgroundColor: "#FCE8E6"
+  },
+  youtubeButtonText: {
+    color: "#B42318"
   }
 });

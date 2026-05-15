@@ -66,6 +66,11 @@ export function getKhutbahPreview(id: string) {
   return khutbahPreviews[id] ?? "Hutbenin kısa özeti burada gösterilir; resmi metnin tamamı için kaynak bağlantısı açılır.";
 }
 
+export function getKhutbahYoutubeUrl(khutbah: FridayKhutbah) {
+  const query = `Diyanet Cuma Hutbesi ${khutbah.date} ${khutbah.title}`;
+  return `https://www.youtube.com/results?search_query=${encodeURIComponent(query)}`;
+}
+
 export const fridayKhutbahs: FridayKhutbah[] = [
   {
     id: "2026-01-02",
