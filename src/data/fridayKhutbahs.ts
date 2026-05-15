@@ -19,6 +19,53 @@ export type FridayKhutbahMonth = {
 const diyanetHaberHutbeler = "https://www.diyanethaber.com.tr/hutbeler";
 const diyanetTvArchive = "https://www.diyanet.tv/cuma-hutbesi-canli-cuma-sevinci/bolumler";
 
+const khutbahPreviews: Record<string, string> = {
+  "2026-01-02":
+    "Kâinattaki düzen, insanın yaratılışı ve hayatın anlamı üzerinden her varlığın Rabbimizi hatırlattığı vurgulanır.",
+  "2026-01-09":
+    "Namazın müminin hayatındaki merkezi yeri, kulluk bilinci ve günlük hayatı güzelleştiren yönü kısa bir çerçevede anlatılır.",
+  "2026-01-16":
+    "Dini değerlerin kötüye kullanılmasına karşı bilinçli olmak, sahih bilgiye yönelmek ve güvenilir kaynakları esas almak öne çıkarılır.",
+  "2026-01-23":
+    "Gençlerin arkadaş çevresi, güzel ahlak ve birbirini iyiye çağırma sorumluluğu üzerinden akran ilişkilerine dikkat çekilir.",
+  "2026-01-30":
+    "Tövbenin insanı arındıran ve yeniden ayağa kaldıran yönü; pişmanlık, samimiyet ve iyiye yönelme bilinciyle ele alınır.",
+  "2026-02-06":
+    "Toplumsal dayanışma, kardeşlik hukuku ve zor zamanlarda birbirine destek olmanın dini ve insani değeri hatırlatılır.",
+  "2026-02-13":
+    "Ramazan ayının manevi iklimi, ibadet, sabır, paylaşma ve kalbi yenileme fırsatı olarak öne çıkarılır.",
+  "2026-02-20":
+    "Ramazan günlerinde camilerin, cemaatin ve ortak ibadet bilincinin insan hayatına kattığı huzur anlatılır.",
+  "2026-02-27":
+    "Ramazan ayının bağımlılıklardan uzaklaşmak, iradeyi güçlendirmek ve iyi alışkanlıklar kazanmak için fırsat olduğu vurgulanır.",
+  "2026-03-06":
+    "Zekât ve fıtır sadakasının yardımlaşma, arınma ve ihtiyaç sahiplerine ulaşma yönü hatırlatılır.",
+  "2026-03-13":
+    "Peygamberlerin hak, adalet ve tevhid mücadelesi; müminlere rehberlik eden örnek hayatlar olarak anlatılır.",
+  "2026-03-20":
+    "Ramazan bilincinin sadece bir aya değil, bütün hayata taşınması gerektiği üzerinde durulur.",
+  "2026-03-27":
+    "Tevekkülün çalışmayı bırakmak değil, gayret ettikten sonra Allah'a güvenmek olduğu sade bir şekilde açıklanır.",
+  "2026-04-03":
+    "Cuma namazının ümmet bilincini diri tutan yönü ve müminleri aynı safta buluşturan manevi atmosferi öne çıkarılır.",
+  "2026-04-10":
+    "İslam'ın iman, ibadet, ahlak ve sosyal hayatı kuşatan bütüncül bir hayat rehberi olduğu hatırlatılır.",
+  "2026-04-17":
+    "Birlik, sorumluluk ve kardeşlik bilinciyle toplum olarak birbirimize sahip çıkma çağrısı yapılır.",
+  "2026-04-24":
+    "Merhametin aileden topluma uzanan eğitici gücü; dil, davranış ve ilişkilerde şefkatle görünür hale gelir.",
+  "2026-05-01":
+    "Helal kazanç, emek, alın teri ve kul hakkına riayet etmenin hayatımızdaki değeri vurgulanır.",
+  "2026-05-08":
+    "İbadetlerin insanı Rabbine yaklaştıran, kalbi arındıran ve davranışları güzelleştiren yönü anlatılır.",
+  "2026-05-15":
+    "Toplumsal sorumluluk, komşuluk, yardımlaşma ve ortak iyiliği koruma bilinci üzerinde durulur."
+};
+
+export function getKhutbahPreview(id: string) {
+  return khutbahPreviews[id] ?? "Hutbenin kısa özeti burada gösterilir; resmi metnin tamamı için kaynak bağlantısı açılır.";
+}
+
 export const fridayKhutbahs: FridayKhutbah[] = [
   {
     id: "2026-01-02",

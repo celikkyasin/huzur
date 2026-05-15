@@ -3,7 +3,7 @@
     "name": "Huzur",
     "slug": "huzur",
     "scheme": "huzur",
-    "version": "1.0.51",
+    "version": "1.0.52",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",

@@ -4,7 +4,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { AppHeader } from "@/components/AppHeader";
 import { Card } from "@/components/ui/Card";
 import { ScreenContainer } from "@/components/ui/ScreenContainer";
-import { fridayKhutbahMonths, latestFridayKhutbah } from "@/data/fridayKhutbahs";
+import { fridayKhutbahMonths, getKhutbahPreview, latestFridayKhutbah } from "@/data/fridayKhutbahs";
 import { colors, radii, typography } from "@/theme";
 
 export default function FridaySermonsScreen() {
@@ -29,7 +29,7 @@ export default function FridaySermonsScreen() {
       <Card style={styles.sourceCard}>
         <Ionicons name="shield-checkmark" size={22} color={colors.emerald} />
         <Text style={styles.sourceText}>
-          Hutbe başlıkları ve kaynak bağlantıları Diyanet Haber / Diyanet TV arşivine göre gösterilir. Tam resmi metin için kaynağı açabilirsin.
+          Hutbe başlıkları ve kaynak bağlantıları Diyanet Haber / Diyanet TV arşivine göre gösterilir. Önizleme kısa özettir; resmi metnin devamı kaynakta açılır.
         </Text>
       </Card>
 
@@ -73,14 +73,21 @@ export default function FridaySermonsScreen() {
                         </View>
                         <Text style={styles.cardTitle}>{khutbah.title}</Text>
                         <Text style={styles.summary}>{khutbah.summary}</Text>
+                        <View style={styles.previewBox}>
+                          <View style={styles.previewHeader}>
+                            <Ionicons name="reader-outline" size={17} color={colors.gold} />
+                            <Text style={styles.previewLabel}>Kısa bölüm</Text>
+                          </View>
+                          <Text style={styles.previewText}>{getKhutbahPreview(khutbah.id)}</Text>
+                        </View>
                         <Pressable
                           accessibilityRole="button"
-                          accessibilityLabel={`${khutbah.title} resmi kaynak sayfasını aç`}
+                          accessibilityLabel={`${khutbah.title} hutbesinin devamını Diyanet kaynağında aç`}
                           onPress={() => Linking.openURL(khutbah.sourceUrl)}
                           style={styles.sourceButton}
                         >
                           <Ionicons name="open-outline" size={18} color={colors.emerald} />
-                          <Text style={styles.sourceButtonText}>Resmi kaynağı aç</Text>
+                          <Text style={styles.sourceButtonText}>Devamını Diyanet'te oku</Text>
                         </Pressable>
                       </View>
                     );
@@ -245,6 +252,32 @@ const styles = StyleSheet.create({
     color: colors.emerald,
     fontWeight: "800",
     lineHeight: 21
+  },
+  previewBox: {
+    gap: 8,
+    borderRadius: radii.md,
+    padding: 13,
+    backgroundColor: "rgba(215,179,90,0.13)",
+    borderWidth: 1,
+    borderColor: "rgba(215,179,90,0.34)"
+  },
+  previewHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 7
+  },
+  previewLabel: {
+    color: colors.ink,
+    fontSize: 12,
+    fontWeight: "900",
+    textTransform: "uppercase",
+    letterSpacing: 0.4
+  },
+  previewText: {
+    color: colors.ink,
+    fontSize: 14,
+    lineHeight: 21,
+    fontWeight: "700"
   },
   sourceButton: {
     minHeight: 42,
