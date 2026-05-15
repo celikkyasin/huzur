@@ -16,56 +16,89 @@ function New-IconBitmap([int]$size, [bool]$round) {
 
   $emerald = [System.Drawing.Color]::FromArgb(4, 70, 54)
   $emeraldDark = [System.Drawing.Color]::FromArgb(2, 45, 38)
+  $emeraldLight = [System.Drawing.Color]::FromArgb(16, 118, 89)
   $gold = [System.Drawing.Color]::FromArgb(213, 170, 82)
   $goldLight = [System.Drawing.Color]::FromArgb(245, 222, 154)
   $cream = [System.Drawing.Color]::FromArgb(249, 244, 229)
 
+  $unit = $size / 1024.0
   $rect = [System.Drawing.RectangleF]::new(0, 0, $size, $size)
-  $bgBrush = New-Object System.Drawing.Drawing2D.LinearGradientBrush $rect, $emerald, $emeraldDark, 45
+  $bgBrush = New-Object System.Drawing.Drawing2D.LinearGradientBrush $rect, $emeraldLight, $emeraldDark, 45
   $graphics.FillRectangle($bgBrush, $rect)
 
-  $unit = $size / 1024.0
-  $center = $size / 2.0
+  $outerPen = New-Object System.Drawing.Pen $gold, ([Math]::Max(4, 18 * $unit))
+  $innerPen = New-Object System.Drawing.Pen ([System.Drawing.Color]::FromArgb(125, $goldLight)), ([Math]::Max(2, 6 * $unit))
+  $graphics.DrawEllipse($outerPen, 92 * $unit, 92 * $unit, 840 * $unit, 840 * $unit)
+  $graphics.DrawEllipse($innerPen, 135 * $unit, 135 * $unit, 754 * $unit, 754 * $unit)
 
-  $borderPen = New-Object System.Drawing.Pen $gold, ([Math]::Max(4, 18 * $unit))
-  $innerPen = New-Object System.Drawing.Pen ([System.Drawing.Color]::FromArgb(120, $goldLight)), ([Math]::Max(2, 6 * $unit))
-  $graphics.DrawEllipse($borderPen, 92 * $unit, 92 * $unit, 840 * $unit, 840 * $unit)
-  $graphics.DrawEllipse($innerPen, 132 * $unit, 132 * $unit, 760 * $unit, 760 * $unit)
+  $glowPoints = [System.Drawing.PointF[]]@(
+    [System.Drawing.PointF]::new(512 * $unit, 235 * $unit),
+    [System.Drawing.PointF]::new(785 * $unit, 512 * $unit),
+    [System.Drawing.PointF]::new(512 * $unit, 810 * $unit),
+    [System.Drawing.PointF]::new(240 * $unit, 512 * $unit)
+  )
+  $glowBrush = New-Object System.Drawing.Drawing2D.PathGradientBrush -ArgumentList (, $glowPoints)
+  $glowBrush.CenterColor = [System.Drawing.Color]::FromArgb(74, $goldLight)
+  $glowBrush.SurroundColors = [System.Drawing.Color[]]@([System.Drawing.Color]::FromArgb(0, $goldLight))
+  $graphics.FillEllipse($glowBrush, 220 * $unit, 210 * $unit, 584 * $unit, 610 * $unit)
 
-  $archPath = New-Object System.Drawing.Drawing2D.GraphicsPath
-  $archPath.StartFigure()
-  $archPath.AddBezier(294 * $unit, 720 * $unit, 258 * $unit, 500 * $unit, 332 * $unit, 332 * $unit, $center, 210 * $unit)
-  $archPath.AddBezier($center, 210 * $unit, 692 * $unit, 332 * $unit, 766 * $unit, 500 * $unit, 730 * $unit, 720 * $unit)
-  $archPath.AddLine(730 * $unit, 784 * $unit, 294 * $unit, 784 * $unit)
-  $archPath.CloseFigure()
+  $mosqueBrush = New-Object System.Drawing.Drawing2D.LinearGradientBrush (
+    [System.Drawing.RectangleF]::new(245 * $unit, 270 * $unit, 534 * $unit, 500 * $unit),
+    $cream,
+    [System.Drawing.Color]::FromArgb(230, 206, 135),
+    90
+  )
+  $mosquePen = New-Object System.Drawing.Pen $gold, ([Math]::Max(4, 12 * $unit))
+  $shadowBrush = New-Object System.Drawing.SolidBrush ([System.Drawing.Color]::FromArgb(85, 0, 0, 0))
 
-  $archBrush = New-Object System.Drawing.Drawing2D.LinearGradientBrush ([System.Drawing.RectangleF]::new(260 * $unit, 190 * $unit, 500 * $unit, 620 * $unit)), $cream, ([System.Drawing.Color]::FromArgb(235, 210, 140)), 90
-  $graphics.FillPath($archBrush, $archPath)
-  $graphics.DrawPath((New-Object System.Drawing.Pen $gold, ([Math]::Max(5, 16 * $unit))), $archPath)
+  $graphics.FillRectangle($shadowBrush, 274 * $unit, 656 * $unit, 476 * $unit, 88 * $unit)
 
-  $crescentPen = New-Object System.Drawing.Pen $gold, ([Math]::Max(12, 58 * $unit))
+  $dome = New-Object System.Drawing.Drawing2D.GraphicsPath
+  $dome.StartFigure()
+  $dome.AddBezier(285 * $unit, 590 * $unit, 300 * $unit, 390 * $unit, 430 * $unit, 342 * $unit, 512 * $unit, 245 * $unit)
+  $dome.AddBezier(512 * $unit, 245 * $unit, 594 * $unit, 342 * $unit, 724 * $unit, 390 * $unit, 739 * $unit, 590 * $unit)
+  $dome.AddLine(739 * $unit, 665 * $unit, 285 * $unit, 665 * $unit)
+  $dome.CloseFigure()
+  $graphics.FillPath($mosqueBrush, $dome)
+  $graphics.DrawPath($mosquePen, $dome)
+
+  $baseRect = [System.Drawing.RectangleF]::new(250 * $unit, 640 * $unit, 524 * $unit, 124 * $unit)
+  $graphics.FillRectangle($mosqueBrush, $baseRect)
+  $graphics.DrawRectangle($mosquePen, $baseRect.X, $baseRect.Y, $baseRect.Width, $baseRect.Height)
+
+  foreach ($x in @(322, 432, 542, 652)) {
+    $door = New-Object System.Drawing.Drawing2D.GraphicsPath
+    $door.StartFigure()
+    $door.AddBezier($x * $unit, 748 * $unit, $x * $unit, 690 * $unit, ($x + 72) * $unit, 690 * $unit, ($x + 72) * $unit, 748 * $unit)
+    $door.AddLine(($x + 72) * $unit, 764 * $unit, $x * $unit, 764 * $unit)
+    $door.CloseFigure()
+    $graphics.FillPath((New-Object System.Drawing.SolidBrush $emerald), $door)
+  }
+
+  foreach ($x in @(206, 784)) {
+    $graphics.FillRectangle($shadowBrush, ($x + 12) * $unit, 335 * $unit, 82 * $unit, 430 * $unit)
+    $graphics.FillRectangle($mosqueBrush, $x * $unit, 320 * $unit, 74 * $unit, 444 * $unit)
+    $graphics.DrawRectangle($mosquePen, $x * $unit, 320 * $unit, 74 * $unit, 444 * $unit)
+
+    $spire = New-Object System.Drawing.Drawing2D.GraphicsPath
+    $spire.AddPolygon([System.Drawing.PointF[]]@(
+      [System.Drawing.PointF]::new(($x - 12) * $unit, 320 * $unit),
+      [System.Drawing.PointF]::new(($x + 37) * $unit, 218 * $unit),
+      [System.Drawing.PointF]::new(($x + 86) * $unit, 320 * $unit)
+    ))
+    $graphics.FillPath($mosqueBrush, $spire)
+    $graphics.DrawPath($mosquePen, $spire)
+
+    $graphics.FillEllipse((New-Object System.Drawing.SolidBrush $emerald), ($x + 18) * $unit, 455 * $unit, 38 * $unit, 64 * $unit)
+    $graphics.FillEllipse((New-Object System.Drawing.SolidBrush $emerald), ($x + 18) * $unit, 565 * $unit, 38 * $unit, 64 * $unit)
+  }
+
+  $crescentPen = New-Object System.Drawing.Pen $goldLight, ([Math]::Max(3, 14 * $unit))
   $crescentPen.StartCap = [System.Drawing.Drawing2D.LineCap]::Round
   $crescentPen.EndCap = [System.Drawing.Drawing2D.LineCap]::Round
-  $graphics.DrawArc($crescentPen, 360 * $unit, 340 * $unit, 290 * $unit, 290 * $unit, 112, 232)
-
-  $starPath = New-Object System.Drawing.Drawing2D.GraphicsPath
-  $starPoints = @(
-    [System.Drawing.PointF]::new(650 * $unit, 352 * $unit),
-    [System.Drawing.PointF]::new(670 * $unit, 408 * $unit),
-    [System.Drawing.PointF]::new(730 * $unit, 408 * $unit),
-    [System.Drawing.PointF]::new(682 * $unit, 442 * $unit),
-    [System.Drawing.PointF]::new(700 * $unit, 500 * $unit),
-    [System.Drawing.PointF]::new(650 * $unit, 466 * $unit),
-    [System.Drawing.PointF]::new(600 * $unit, 500 * $unit),
-    [System.Drawing.PointF]::new(618 * $unit, 442 * $unit),
-    [System.Drawing.PointF]::new(570 * $unit, 408 * $unit),
-    [System.Drawing.PointF]::new(630 * $unit, 408 * $unit)
-  )
-  $starPath.AddPolygon($starPoints)
-  $graphics.FillPath((New-Object System.Drawing.SolidBrush $goldLight), $starPath)
-
-  $graphics.DrawLine((New-Object System.Drawing.Pen $gold, ([Math]::Max(4, 12 * $unit))), 360 * $unit, 704 * $unit, 664 * $unit, 704 * $unit)
-  $graphics.DrawLine((New-Object System.Drawing.Pen ([System.Drawing.Color]::FromArgb(150, $goldLight)), ([Math]::Max(2, 5 * $unit))), 410 * $unit, 742 * $unit, 614 * $unit, 742 * $unit)
+  $graphics.DrawLine((New-Object System.Drawing.Pen $gold, ([Math]::Max(3, 8 * $unit))), 512 * $unit, 250 * $unit, 512 * $unit, 185 * $unit)
+  $graphics.DrawArc($crescentPen, 493 * $unit, 146 * $unit, 54 * $unit, 54 * $unit, 92, 244)
+  $graphics.DrawLine((New-Object System.Drawing.Pen $gold, ([Math]::Max(4, 12 * $unit))), 345 * $unit, 798 * $unit, 679 * $unit, 798 * $unit)
 
   $graphics.Dispose()
   return $bitmap
@@ -100,4 +133,4 @@ foreach ($density in $launcherSizes.Keys) {
   $roundIcon.Dispose()
 }
 
-Write-Host "Generated app icon assets"
+Write-Host "Generated mosque app icon assets"
