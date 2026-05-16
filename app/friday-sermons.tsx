@@ -40,13 +40,12 @@ export default function FridaySermonsScreen() {
       <View style={styles.hero}>
         <View style={styles.heroText}>
           <Text style={styles.eyebrow}>Bu haftanın hutbesi</Text>
-          <Text style={styles.title}>{latestKhutbah.title}</Text>
+          <Text style={styles.title} numberOfLines={2} adjustsFontSizeToFit minimumFontScale={0.84}>
+            {latestKhutbah.title}
+          </Text>
           <Text style={styles.subtitle}>
             {latestKhutbah.date} - {latestKhutbah.sourceName}
           </Text>
-        </View>
-        <View style={styles.heroIcon}>
-          <Ionicons name="document-text" size={30} color={colors.gold} />
         </View>
       </View>
 
@@ -171,8 +170,7 @@ const styles = StyleSheet.create({
     padding: 20,
     backgroundColor: colors.emerald,
     flexDirection: "row",
-    alignItems: "center",
-    gap: 16
+    alignItems: "flex-start"
   },
   heroText: {
     flex: 1
@@ -188,22 +186,14 @@ const styles = StyleSheet.create({
     marginTop: 8,
     color: colors.white,
     fontFamily: typography.title,
-    fontSize: 30,
-    lineHeight: 36,
+    fontSize: 27,
+    lineHeight: 32,
     fontWeight: "900"
   },
   subtitle: {
     marginTop: 6,
     color: "rgba(255,255,255,0.74)",
     fontWeight: "800"
-  },
-  heroIcon: {
-    width: 58,
-    height: 58,
-    borderRadius: radii.round,
-    alignItems: "center",
-    justifyContent: "center",
-    backgroundColor: "rgba(255,255,255,0.12)"
   },
   sourceCard: {
     marginTop: 12,

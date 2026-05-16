@@ -59,7 +59,7 @@ export function PrayerTimeCard({ locationLabel, prayerTimes, isLocating, isLoadi
             <View style={styles.infoTextWrap}>
               <Text style={styles.infoLabel}>Bugün</Text>
               <Text style={styles.infoValue} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.82}>
-                Miladi {prayerState.displayDate}
+                {prayerState.displayDate} • {prayerState.hijriDate}
               </Text>
             </View>
           </View>

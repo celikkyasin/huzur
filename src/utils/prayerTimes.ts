@@ -6,6 +6,8 @@ const turkishDateFormatter = new Intl.DateTimeFormat("tr-TR", {
   year: "numeric"
 });
 
+const hijriMonths = ["Muharrem", "Safer", "Rebiülevvel", "Rebiülahir", "Cemaziyelevvel", "Cemaziyelahir", "Recep", "Şaban", "Ramazan", "Şevval", "Zilkade", "Zilhicce"];
+
 function getMinutes(time: string) {
   const [hour, minute] = time.split(":").map(Number);
   return hour * 60 + minute;
@@ -29,6 +31,43 @@ function formatCountdown(totalMinutes: number) {
 
 export function getDisplayDate(date = new Date()) {
   return turkishDateFormatter.format(date);
+}
+
+export function getHijriDisplayDate(date = new Date()) {
+  try {
+    return new Intl.DateTimeFormat("tr-TR-u-ca-islamic", {
+      day: "numeric",
+      month: "long",
+      year: "numeric"
+    })
+      .format(date)
+      .replace(/\sAH$/i, "");
+  } catch {
+    const day = date.getDate();
+    const month = date.getMonth() + 1;
+    const year = date.getFullYear();
+    const adjustedMonth = month < 3 ? month + 12 : month;
+    const adjustedYear = month < 3 ? year - 1 : year;
+    const century = Math.floor(adjustedYear / 100);
+    const yearOfCentury = adjustedYear - century * 100;
+    const julianDay =
+      Math.floor((146097 * century) / 4) +
+      Math.floor((1461 * yearOfCentury) / 4) +
+      Math.floor((153 * (adjustedMonth + 1)) / 5) +
+      day +
+      1721119;
+    const islamicDays = julianDay - 1948440 + 10632;
+    const cycle = Math.floor((islamicDays - 1) / 10631);
+    const dayInCycle = islamicDays - 10631 * cycle + 354;
+    const islamicYearInCycle = Math.floor((10985 - dayInCycle) / 5316) * Math.floor((50 * dayInCycle) / 17719) + Math.floor(dayInCycle / 5670) * Math.floor((43 * dayInCycle) / 15238);
+    const islamicYear = islamicYearInCycle + 30 * cycle;
+    const firstDayOfYear = 354 * islamicYear + Math.floor((3 + 11 * islamicYear) / 30) + 1948440 - 385;
+    const islamicMonth = Math.min(12, Math.ceil((julianDay - 29 - firstDayOfYear) / 29.5) + 1);
+    const firstDayOfMonth = 354 * islamicYear + Math.floor((3 + 11 * islamicYear) / 30) + Math.floor(29.5 * (islamicMonth - 1)) + 1948440 - 385;
+    const islamicDay = julianDay - firstDayOfMonth + 1;
+
+    return `${islamicDay} ${hijriMonths[islamicMonth - 1]} ${islamicYear}`;
+  }
 }
 
 export function getDynamicPrayerState(prayerTimes: PrayerTime[], date = new Date()) {
@@ -56,6 +95,7 @@ export function getDynamicPrayerState(prayerTimes: PrayerTime[], date = new Date
     minutesUntilNext,
     countdown: formatCountdown(minutesUntilNext),
     displayDate: getDisplayDate(date),
+    hijriDate: getHijriDisplayDate(date),
     markedTimes
   };
 }
