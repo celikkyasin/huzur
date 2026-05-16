@@ -9,14 +9,23 @@ import { Card } from "@/components/ui/Card";
 import { PrimaryButton } from "@/components/ui/PrimaryButton";
 import { ScreenContainer } from "@/components/ui/ScreenContainer";
 import { SectionTitle } from "@/components/ui/SectionTitle";
-import { getPrayerNotificationsEnabled, setPrayerNotificationsEnabled } from "@/services/prayerNotifications";
+import {
+  getPrayerNotificationPreferences,
+  getPrayerNotificationsEnabled,
+  reminderMinuteOptions,
+  setPrayerNotificationPreferences,
+  setPrayerNotificationsEnabled,
+  soundModeOptions,
+  type PrayerNotificationPreferences,
+  type PrayerNotificationSoundMode
+} from "@/services/prayerNotifications";
 import { usePrayerTimesStore } from "@/store/prayerTimesStore";
 import { colors, radii, shadows, typography } from "@/theme";
 import type { SettingsItem } from "@/types";
 
 const THEME_STORAGE_KEY = "huzur.settings.theme";
 const LANGUAGE_STORAGE_KEY = "huzur.settings.language";
-const APP_VERSION = "1.0.45";
+const APP_VERSION = "1.0.58";
 
 type ThemeMode = "Aydınlık" | "Koyu";
 type LanguageMode = "Türkçe" | "English";
@@ -34,12 +43,14 @@ const supportItems: SettingsItem[] = [
 export default function SettingsScreen() {
   const [notificationsEnabled, setNotificationsEnabled] = useState(false);
   const [isUpdatingNotifications, setIsUpdatingNotifications] = useState(false);
+  const [notificationPreferences, setNotificationPreferences] = useState<PrayerNotificationPreferences>({ reminderMinutes: 15, soundMode: "default" });
   const [themeMode, setThemeMode] = useState<ThemeMode>("Aydınlık");
   const [languageMode, setLanguageMode] = useState<LanguageMode>("Türkçe");
   const prayerTimes = usePrayerTimesStore((state) => state.times);
 
   useEffect(() => {
     getPrayerNotificationsEnabled().then(setNotificationsEnabled);
+    getPrayerNotificationPreferences().then(setNotificationPreferences);
     AsyncStorage.getItem(THEME_STORAGE_KEY).then((value) => {
       if (value === "Aydınlık" || value === "Koyu") {
         setThemeMode(value);
@@ -64,7 +75,7 @@ export default function SettingsScreen() {
     setIsUpdatingNotifications(true);
 
     try {
-      const result = await setPrayerNotificationsEnabled(nextValue, prayerTimes);
+      const result = await setPrayerNotificationsEnabled(nextValue, prayerTimes, notificationPreferences);
       setNotificationsEnabled(result.enabled);
 
       if (!result.permissionGranted) {
@@ -74,6 +85,22 @@ export default function SettingsScreen() {
       }
     } catch {
       Alert.alert("Bildirim ayarlanamadı", "Şu anda bildirim tercihi kaydedilemedi. Lütfen tekrar deneyin.");
+    } finally {
+      setIsUpdatingNotifications(false);
+    }
+  };
+
+  const updateNotificationPreferences = async (preferences: Partial<PrayerNotificationPreferences>) => {
+    if (isUpdatingNotifications) {
+      return;
+    }
+
+    setIsUpdatingNotifications(true);
+    try {
+      const nextPreferences = await setPrayerNotificationPreferences(preferences, prayerTimes);
+      setNotificationPreferences(nextPreferences);
+    } catch {
+      Alert.alert("Bildirim ayarlanamadı", "Bildirim tercihi şu anda kaydedilemedi. Lütfen tekrar deneyin.");
     } finally {
       setIsUpdatingNotifications(false);
     }
@@ -150,6 +177,68 @@ export default function SettingsScreen() {
     </View>
   );
 
+  const NotificationPreferencesPanel = () => (
+    <Card style={styles.notificationPanel}>
+      <View style={styles.notificationHeader}>
+        <View style={styles.notificationIcon}>
+          <Ionicons name="notifications" size={20} color={colors.emerald} />
+        </View>
+        <View style={styles.notificationCopy}>
+          <Text style={styles.notificationTitle}>Namaz vakti uyarıları</Text>
+          <Text style={styles.notificationSubtitle}>Ezan sesi sadece siz seçerseniz çalar. Toplantı ve sessiz ortamlar için standart ya da sessiz modu kullanabilirsiniz.</Text>
+        </View>
+      </View>
+
+      <Text style={styles.preferenceLabel}>Ne kadar önce haber versin?</Text>
+      <View style={styles.preferenceGrid}>
+        {reminderMinuteOptions.map((minutes) => {
+          const selected = notificationPreferences.reminderMinutes === minutes;
+          return (
+            <Pressable
+              key={minutes}
+              accessibilityRole="button"
+              disabled={isUpdatingNotifications}
+              onPress={() => void updateNotificationPreferences({ reminderMinutes: minutes })}
+              style={[styles.preferencePill, selected && styles.preferencePillSelected]}
+            >
+              <Text style={[styles.preferencePillText, selected && styles.preferencePillTextSelected]}>{minutes === 0 ? "Vakit girince" : `${minutes} dk`}</Text>
+            </Pressable>
+          );
+        })}
+      </View>
+
+      <Text style={styles.preferenceLabel}>Bildirim sesi</Text>
+      <View style={styles.soundGrid}>
+        {soundModeOptions.map((option) => {
+          const selected = notificationPreferences.soundMode === option.mode;
+          const iconName: Record<PrayerNotificationSoundMode, keyof typeof Ionicons.glyphMap> = {
+            silent: "volume-mute",
+            default: "phone-portrait",
+            adhan: "musical-notes"
+          };
+
+          return (
+            <Pressable
+              key={option.mode}
+              accessibilityRole="button"
+              disabled={isUpdatingNotifications}
+              onPress={() => void updateNotificationPreferences({ soundMode: option.mode })}
+              style={[styles.soundOption, selected && styles.soundOptionSelected]}
+            >
+              <Ionicons name={iconName[option.mode]} size={18} color={selected ? colors.white : colors.emerald} />
+              <View style={styles.soundTextWrap}>
+                <Text style={[styles.soundTitle, selected && styles.soundTitleSelected]}>{option.label}</Text>
+                <Text style={[styles.soundDescription, selected && styles.soundDescriptionSelected]} numberOfLines={2}>
+                  {option.description}
+                </Text>
+              </View>
+            </Pressable>
+          );
+        })}
+      </View>
+    </Card>
+  );
+
   return (
     <ScreenContainer contentStyle={styles.screen}>
       <AppHeader title="Ayarlar" />
@@ -212,6 +301,7 @@ export default function SettingsScreen() {
         <SettingsRow item={preferenceItems[0]} onPress={() => handleSettingPress("prayer")} showChevron={false} rightElement={<NotificationSwitch />} />
         <SettingsRow item={preferenceItems[1]} isLast onPress={() => handleSettingPress("theme")} showChevron={false} rightElement={<ThemeBadge />} />
       </Card>
+      <NotificationPreferencesPanel />
 
       <SectionTitle title="Destek" />
       <Card style={styles.rows}>
@@ -394,6 +484,114 @@ const styles = StyleSheet.create({
   },
   rows: {
     paddingVertical: 2
+  },
+  notificationPanel: {
+    marginTop: 12,
+    gap: 13
+  },
+  notificationHeader: {
+    flexDirection: "row",
+    gap: 12,
+    alignItems: "flex-start"
+  },
+  notificationIcon: {
+    width: 42,
+    height: 42,
+    borderRadius: radii.round,
+    backgroundColor: colors.emeraldSoft,
+    alignItems: "center",
+    justifyContent: "center"
+  },
+  notificationCopy: {
+    flex: 1,
+    minWidth: 0
+  },
+  notificationTitle: {
+    color: colors.ink,
+    fontSize: 15,
+    fontWeight: "900"
+  },
+  notificationSubtitle: {
+    color: colors.muted,
+    fontSize: 12,
+    lineHeight: 18,
+    marginTop: 4,
+    fontWeight: "700"
+  },
+  preferenceLabel: {
+    color: colors.ink,
+    fontSize: 13,
+    fontWeight: "900",
+    marginTop: 2
+  },
+  preferenceGrid: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 8
+  },
+  preferencePill: {
+    minHeight: 38,
+    minWidth: 74,
+    borderRadius: radii.round,
+    backgroundColor: colors.cream,
+    borderWidth: 1,
+    borderColor: colors.line,
+    alignItems: "center",
+    justifyContent: "center",
+    paddingHorizontal: 12
+  },
+  preferencePillSelected: {
+    backgroundColor: colors.emerald,
+    borderColor: colors.emerald
+  },
+  preferencePillText: {
+    color: colors.muted,
+    fontSize: 12,
+    fontWeight: "900"
+  },
+  preferencePillTextSelected: {
+    color: colors.white
+  },
+  soundGrid: {
+    gap: 9
+  },
+  soundOption: {
+    minHeight: 62,
+    borderRadius: radii.md,
+    backgroundColor: colors.cream,
+    borderWidth: 1,
+    borderColor: colors.line,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+    paddingHorizontal: 12,
+    paddingVertical: 10
+  },
+  soundOptionSelected: {
+    backgroundColor: colors.emerald,
+    borderColor: colors.emerald
+  },
+  soundTextWrap: {
+    flex: 1,
+    minWidth: 0
+  },
+  soundTitle: {
+    color: colors.ink,
+    fontSize: 13,
+    fontWeight: "900"
+  },
+  soundTitleSelected: {
+    color: colors.white
+  },
+  soundDescription: {
+    color: colors.muted,
+    fontSize: 11,
+    lineHeight: 15,
+    marginTop: 2,
+    fontWeight: "700"
+  },
+  soundDescriptionSelected: {
+    color: "rgba(255,255,255,0.76)"
   },
   premium: {
     marginTop: 18,

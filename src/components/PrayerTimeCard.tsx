@@ -7,15 +7,19 @@ import { getDynamicPrayerState } from "@/utils/prayerTimes";
 
 const heroBackground = require("../../assets/home/prayer-hero-bg.png");
 
+type WeatherIcon = "sunny" | "partly-sunny" | "cloudy" | "rainy" | "snow" | "thunderstorm";
+
 type PrayerTimeCardProps = {
   locationLabel: string;
   prayerTimes: PrayerTime[];
   isLocating?: boolean;
   isLoadingTimes?: boolean;
   sourceLabel?: string;
+  weatherLabel?: string;
+  weatherIcon?: WeatherIcon;
 };
 
-export function PrayerTimeCard({ locationLabel, prayerTimes, isLocating, isLoadingTimes, sourceLabel }: PrayerTimeCardProps) {
+export function PrayerTimeCard({ locationLabel, prayerTimes, isLocating, isLoadingTimes, sourceLabel, weatherLabel, weatherIcon = "partly-sunny" }: PrayerTimeCardProps) {
   const prayerState = getDynamicPrayerState(prayerTimes);
   const statusText = isLoadingTimes ? "Vakitler güncelleniyor" : `${prayerState.next.time} vaktine kadar`;
 
@@ -29,6 +33,14 @@ export function PrayerTimeCard({ locationLabel, prayerTimes, isLocating, isLoadi
               {isLocating ? "Konum alınıyor" : locationLabel}
             </Text>
           </View>
+          {weatherLabel ? (
+            <View style={styles.weatherChip}>
+              <Ionicons name={weatherIcon} size={14} color={colors.goldSoft} />
+              <Text style={styles.weatherText} numberOfLines={1}>
+                {weatherLabel}
+              </Text>
+            </View>
+          ) : null}
         </View>
 
         <View style={styles.heroBody}>
@@ -45,7 +57,7 @@ export function PrayerTimeCard({ locationLabel, prayerTimes, isLocating, isLoadi
               <Ionicons name="calendar" size={15} color={colors.goldSoft} />
             </View>
             <View style={styles.infoTextWrap}>
-              <Text style={styles.infoLabel}>Bugün</Text>
+              <Text style={styles.infoLabel}>Bugün / Miladi</Text>
               <Text style={styles.infoValue} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.82}>
                 {prayerState.displayDate}
               </Text>
@@ -108,6 +120,25 @@ const styles = StyleSheet.create({
     color: colors.white,
     flex: 1,
     fontSize: 11,
+    fontWeight: "900"
+  },
+  weatherChip: {
+    minWidth: 78,
+    maxWidth: 104,
+    minHeight: 30,
+    borderRadius: radii.round,
+    backgroundColor: "rgba(255,255,255,0.14)",
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.22)",
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 6,
+    paddingHorizontal: 10
+  },
+  weatherText: {
+    color: colors.white,
+    fontSize: 10,
     fontWeight: "900"
   },
   heroBody: {

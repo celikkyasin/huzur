@@ -5,7 +5,13 @@ import { AppHeader } from "@/components/AppHeader";
 import { Card } from "@/components/ui/Card";
 import { ScreenContainer } from "@/components/ui/ScreenContainer";
 import { SectionTitle } from "@/components/ui/SectionTitle";
-import { getPrayerNotificationsEnabled, setPrayerNotificationsEnabled } from "@/services/prayerNotifications";
+import {
+  getPrayerNotificationPreferences,
+  getPrayerNotificationsEnabled,
+  setPrayerNotificationsEnabled,
+  soundModeOptions,
+  type PrayerNotificationPreferences
+} from "@/services/prayerNotifications";
 import { useLocationStore } from "@/store/locationStore";
 import { usePrayerTimesStore } from "@/store/prayerTimesStore";
 import { colors, radii, typography } from "@/theme";
@@ -29,9 +35,13 @@ export default function PrayerTimesScreen() {
   const prayerState = getDynamicPrayerState(prayerTimes);
   const [notificationsEnabled, setNotificationsEnabled] = useState(false);
   const [isUpdatingNotifications, setIsUpdatingNotifications] = useState(false);
+  const [notificationPreferences, setNotificationPreferences] = useState<PrayerNotificationPreferences>({ reminderMinutes: 15, soundMode: "default" });
+  const reminderLabel = notificationPreferences.reminderMinutes === 0 ? "Vakit girince uyar" : `${notificationPreferences.reminderMinutes} dakika önce hatırlat`;
+  const soundLabel = soundModeOptions.find((option) => option.mode === notificationPreferences.soundMode)?.label ?? "Standart";
 
   useEffect(() => {
     getPrayerNotificationsEnabled().then(setNotificationsEnabled);
+    getPrayerNotificationPreferences().then(setNotificationPreferences);
   }, []);
 
   useEffect(() => {
@@ -40,9 +50,9 @@ export default function PrayerTimesScreen() {
 
   useEffect(() => {
     if (notificationsEnabled && !isLoadingPrayerTimes) {
-      void setPrayerNotificationsEnabled(true, prayerTimes);
+      void setPrayerNotificationsEnabled(true, prayerTimes, notificationPreferences);
     }
-  }, [isLoadingPrayerTimes, notificationsEnabled, prayerTimes]);
+  }, [isLoadingPrayerTimes, notificationPreferences, notificationsEnabled, prayerTimes]);
 
   const handleNotificationToggle = async (enabled: boolean) => {
     if (isUpdatingNotifications) {
@@ -52,7 +62,7 @@ export default function PrayerTimesScreen() {
     setIsUpdatingNotifications(true);
 
     try {
-      const result = await setPrayerNotificationsEnabled(enabled, prayerTimes);
+      const result = await setPrayerNotificationsEnabled(enabled, prayerTimes, notificationPreferences);
       setNotificationsEnabled(result.enabled);
 
       if (!result.permissionGranted) {
@@ -91,7 +101,9 @@ export default function PrayerTimesScreen() {
       <Card style={styles.notification}>
         <View style={styles.notificationText}>
           <Text style={styles.notificationTitle}>Vakit Bildirimleri</Text>
-          <Text style={styles.notificationSubtitle}>15 dakika önce hatırlat, vakit girince ezan oku</Text>
+          <Text style={styles.notificationSubtitle}>
+            {reminderLabel}, ses: {soundLabel}
+          </Text>
         </View>
         <Pressable
           accessibilityRole="switch"

@@ -10,6 +10,7 @@ import { Card } from "@/components/ui/Card";
 import { ScreenContainer } from "@/components/ui/ScreenContainer";
 import { SectionTitle } from "@/components/ui/SectionTitle";
 import { getDailyAyah } from "@/data/mock";
+import { fetchCurrentWeather, type CurrentWeather } from "@/services/weatherApi";
 import { useLocationStore } from "@/store/locationStore";
 import { getCompletionStreak, getDateKey, getPrayerProgress, usePrayerTrackerStore } from "@/store/prayerTrackerStore";
 import { usePrayerTimesStore } from "@/store/prayerTimesStore";
@@ -28,6 +29,7 @@ const quickActions = [
 export default function HomeScreen() {
   const ayahShotRef = useRef<ViewShot | null>(null);
   const [isSharingAyah, setIsSharingAyah] = useState(false);
+  const [weather, setWeather] = useState<CurrentWeather | null>(null);
   const displayPlace = useLocationStore((state) => state.displayPlace);
   const isLoadingLocation = useLocationStore((state) => state.isLoading);
   const locationError = useLocationStore((state) => state.errorMessage);
@@ -50,6 +52,24 @@ export default function HomeScreen() {
   useEffect(() => {
     void loadPrayerTimes({ city, district, country, latitude, longitude });
   }, [city, country, district, latitude, loadPrayerTimes, longitude]);
+
+  useEffect(() => {
+    if (typeof latitude !== "number" || typeof longitude !== "number") {
+      setWeather(null);
+      return;
+    }
+
+    let isActive = true;
+    void fetchCurrentWeather(latitude, longitude).then((result) => {
+      if (isActive) {
+        setWeather(result);
+      }
+    });
+
+    return () => {
+      isActive = false;
+    };
+  }, [latitude, longitude]);
 
   useFocusEffect(
     useCallback(() => {
@@ -95,7 +115,15 @@ export default function HomeScreen() {
         {prayerTimesError ? <Text style={styles.locationWarning}>{prayerTimesError}</Text> : null}
       </View>
 
-      <PrayerTimeCard locationLabel={displayPlace} prayerTimes={prayerTimes} isLocating={isLoadingLocation} isLoadingTimes={isLoadingPrayerTimes} sourceLabel={prayerTimesSource} />
+      <PrayerTimeCard
+        locationLabel={displayPlace}
+        prayerTimes={prayerTimes}
+        isLocating={isLoadingLocation}
+        isLoadingTimes={isLoadingPrayerTimes}
+        sourceLabel={prayerTimesSource}
+        weatherLabel={weather?.label}
+        weatherIcon={weather?.icon}
+      />
 
       <SectionTitle title="Vakitler" action="Tümü" onActionPress={() => router.push("/prayer-times" as never)} />
       <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.timesRow}>

@@ -3,12 +3,34 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import * as Notifications from "expo-notifications";
 import type { PrayerTime } from "@/types";
 
-const STORAGE_KEY = "huzur_prayer_notifications_enabled";
-const REMINDER_CHANNEL_ID = "vakit-hatirlatmalari";
-const ADHAN_CHANNEL_ID = "vakit-ezan-sesi";
+const ENABLED_STORAGE_KEY = "huzur_prayer_notifications_enabled";
+const PREFERENCES_STORAGE_KEY = "huzur_prayer_notification_preferences";
+const REMINDER_CHANNEL_ID = "vakit-hatirlatmalari-v2";
+const REMINDER_SILENT_CHANNEL_ID = "vakit-hatirlatmalari-sessiz-v2";
+const DEFAULT_CHANNEL_ID = "vakit-standart-bildirim-v2";
+const SILENT_CHANNEL_ID = "vakit-sessiz-bildirim-v2";
+const ADHAN_CHANNEL_ID = "vakit-ezan-sesi-v3";
 const ADHAN_SOUND = "adhan.ogg";
-const REMINDER_MINUTES = 15;
-const PRAYERS_WITH_ADHAN = new Set(["imsak", "ogle", "ikindi", "aksam", "yatsi"]);
+const PRAYERS_WITH_NOTIFICATIONS = new Set(["imsak", "ogle", "ikindi", "aksam", "yatsi"]);
+
+export type PrayerNotificationSoundMode = "silent" | "default" | "adhan";
+
+export type PrayerNotificationPreferences = {
+  reminderMinutes: number;
+  soundMode: PrayerNotificationSoundMode;
+};
+
+export const reminderMinuteOptions = [0, 5, 10, 15, 20, 30] as const;
+export const soundModeOptions: Array<{ mode: PrayerNotificationSoundMode; label: string; description: string }> = [
+  { mode: "silent", label: "Sessiz", description: "Sadece ekranda bildirim gösterir." },
+  { mode: "default", label: "Standart", description: "Telefonun bildirim sesiyle uyarır." },
+  { mode: "adhan", label: "Ezan", description: "Vakit girince ezan sesi çalar." }
+];
+
+const defaultPreferences: PrayerNotificationPreferences = {
+  reminderMinutes: 15,
+  soundMode: "default"
+};
 
 Notifications.setNotificationHandler({
   handleNotification: async () => ({
@@ -32,7 +54,33 @@ function subtractMinutes(hour: number, minute: number, amount: number) {
   };
 }
 
-async function ensureNotificationChannel() {
+function normalizePreferences(value?: Partial<PrayerNotificationPreferences> | null): PrayerNotificationPreferences {
+  const reminderMinutes = Number(value?.reminderMinutes);
+  const soundMode = value?.soundMode;
+
+  return {
+    reminderMinutes: reminderMinuteOptions.includes(reminderMinutes as (typeof reminderMinuteOptions)[number]) ? reminderMinutes : defaultPreferences.reminderMinutes,
+    soundMode: soundMode === "silent" || soundMode === "default" || soundMode === "adhan" ? soundMode : defaultPreferences.soundMode
+  };
+}
+
+function getSoundForMode(mode: PrayerNotificationSoundMode) {
+  if (mode === "silent") {
+    return undefined;
+  }
+
+  return mode === "adhan" ? ADHAN_SOUND : "default";
+}
+
+function getChannelForMode(mode: PrayerNotificationSoundMode) {
+  if (mode === "silent") {
+    return SILENT_CHANNEL_ID;
+  }
+
+  return mode === "adhan" ? ADHAN_CHANNEL_ID : DEFAULT_CHANNEL_ID;
+}
+
+async function ensureNotificationChannels() {
   if (Platform.OS !== "android") {
     return;
   }
@@ -42,6 +90,30 @@ async function ensureNotificationChannel() {
     importance: Notifications.AndroidImportance.HIGH,
     sound: "default",
     vibrationPattern: [0, 300, 180, 300],
+    lockscreenVisibility: Notifications.AndroidNotificationVisibility.PUBLIC
+  });
+
+  await Notifications.setNotificationChannelAsync(REMINDER_SILENT_CHANNEL_ID, {
+    name: "Sessiz Vakit Hatırlatmaları",
+    importance: Notifications.AndroidImportance.DEFAULT,
+    sound: undefined,
+    vibrationPattern: [],
+    lockscreenVisibility: Notifications.AndroidNotificationVisibility.PUBLIC
+  });
+
+  await Notifications.setNotificationChannelAsync(DEFAULT_CHANNEL_ID, {
+    name: "Standart Vakit Bildirimleri",
+    importance: Notifications.AndroidImportance.HIGH,
+    sound: "default",
+    vibrationPattern: [0, 300, 180, 300],
+    lockscreenVisibility: Notifications.AndroidNotificationVisibility.PUBLIC
+  });
+
+  await Notifications.setNotificationChannelAsync(SILENT_CHANNEL_ID, {
+    name: "Sessiz Vakit Bildirimleri",
+    importance: Notifications.AndroidImportance.DEFAULT,
+    sound: undefined,
+    vibrationPattern: [],
     lockscreenVisibility: Notifications.AndroidNotificationVisibility.PUBLIC
   });
 
@@ -75,61 +147,93 @@ async function cancelPrayerNotifications() {
 }
 
 export async function getPrayerNotificationsEnabled() {
-  return (await AsyncStorage.getItem(STORAGE_KEY)) === "true";
+  return (await AsyncStorage.getItem(ENABLED_STORAGE_KEY)) === "true";
 }
 
-export async function setPrayerNotificationsEnabled(enabled: boolean, prayerTimes: PrayerTime[]) {
+export async function getPrayerNotificationPreferences() {
+  try {
+    const value = await AsyncStorage.getItem(PREFERENCES_STORAGE_KEY);
+    return normalizePreferences(value ? JSON.parse(value) : null);
+  } catch {
+    return defaultPreferences;
+  }
+}
+
+export async function setPrayerNotificationPreferences(preferences: Partial<PrayerNotificationPreferences>, prayerTimes?: PrayerTime[]) {
+  const nextPreferences = normalizePreferences({
+    ...(await getPrayerNotificationPreferences()),
+    ...preferences
+  });
+  await AsyncStorage.setItem(PREFERENCES_STORAGE_KEY, JSON.stringify(nextPreferences));
+
+  if (prayerTimes && (await getPrayerNotificationsEnabled())) {
+    await setPrayerNotificationsEnabled(true, prayerTimes, nextPreferences);
+  }
+
+  return nextPreferences;
+}
+
+export async function setPrayerNotificationsEnabled(enabled: boolean, prayerTimes: PrayerTime[], preferences?: PrayerNotificationPreferences) {
   if (!enabled) {
     await cancelPrayerNotifications();
-    await AsyncStorage.setItem(STORAGE_KEY, "false");
+    await AsyncStorage.setItem(ENABLED_STORAGE_KEY, "false");
     return { enabled: false, permissionGranted: true };
   }
 
-  await ensureNotificationChannel();
+  await ensureNotificationChannels();
   const permissionGranted = await requestNotificationPermission();
 
   if (!permissionGranted) {
-    await AsyncStorage.setItem(STORAGE_KEY, "false");
+    await AsyncStorage.setItem(ENABLED_STORAGE_KEY, "false");
     return { enabled: false, permissionGranted: false };
   }
 
   await cancelPrayerNotifications();
 
-  for (const prayer of prayerTimes.filter((item) => PRAYERS_WITH_ADHAN.has(item.id))) {
+  const notificationPreferences = preferences ?? (await getPrayerNotificationPreferences());
+  const reminderMinutes = notificationPreferences.reminderMinutes;
+  const exactSound = getSoundForMode(notificationPreferences.soundMode);
+  const exactChannelId = getChannelForMode(notificationPreferences.soundMode);
+  const reminderChannelId = notificationPreferences.soundMode === "silent" ? REMINDER_SILENT_CHANNEL_ID : REMINDER_CHANNEL_ID;
+
+  for (const prayer of prayerTimes.filter((item) => PRAYERS_WITH_NOTIFICATIONS.has(item.id))) {
     const { hour, minute } = parseTime(prayer.time);
-    const reminder = subtractMinutes(hour, minute, REMINDER_MINUTES);
+
+    if (reminderMinutes > 0) {
+      const reminder = subtractMinutes(hour, minute, reminderMinutes);
+
+      await Notifications.scheduleNotificationAsync({
+        identifier: `huzur-prayer-reminder-${prayer.id}`,
+        content: {
+          title: "Vakit Yaklaşıyor",
+          body: `${prayer.name} vaktine ${reminderMinutes} dakika kaldı.`,
+          sound: notificationPreferences.soundMode === "silent" ? undefined : "default"
+        },
+        trigger: {
+          type: Notifications.SchedulableTriggerInputTypes.DAILY,
+          hour: reminder.hour,
+          minute: reminder.minute,
+          channelId: reminderChannelId
+        }
+      });
+    }
 
     await Notifications.scheduleNotificationAsync({
-      identifier: `huzur-prayer-reminder-${prayer.id}`,
-      content: {
-        title: "Vakit Yaklaşıyor",
-        body: `${prayer.name} vaktine ${REMINDER_MINUTES} dakika kaldı.`,
-        sound: "default"
-      },
-      trigger: {
-        type: Notifications.SchedulableTriggerInputTypes.DAILY,
-        hour: reminder.hour,
-        minute: reminder.minute,
-        channelId: REMINDER_CHANNEL_ID
-      }
-    });
-
-    await Notifications.scheduleNotificationAsync({
-      identifier: `huzur-prayer-adhan-${prayer.id}`,
+      identifier: `huzur-prayer-time-${prayer.id}`,
       content: {
         title: "Ezan Vakti",
         body: `${prayer.name} vakti girdi.`,
-        sound: ADHAN_SOUND
+        sound: exactSound
       },
       trigger: {
         type: Notifications.SchedulableTriggerInputTypes.DAILY,
         hour,
         minute,
-        channelId: ADHAN_CHANNEL_ID
+        channelId: exactChannelId
       }
     });
   }
 
-  await AsyncStorage.setItem(STORAGE_KEY, "true");
+  await AsyncStorage.setItem(ENABLED_STORAGE_KEY, "true");
   return { enabled: true, permissionGranted: true };
 }
