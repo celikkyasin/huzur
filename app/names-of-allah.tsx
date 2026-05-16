@@ -118,24 +118,25 @@ export default function NamesOfAllahScreen() {
       <View style={styles.nameCardWrap}>
         {hasImage && !imageFailed ? (
           <View style={styles.imageFrame}>
-            <Image
-              source={{ uri: item.imageUrl }}
-              style={[styles.nameImage, { height: cardImageHeight }]}
-              resizeMode="cover"
-              onLoad={() => setLoadingImages((current) => ({ ...current, [item.id]: false }))}
-              onLoadEnd={() => setLoadingImages((current) => ({ ...current, [item.id]: false }))}
-              onError={() => {
-                setLoadingImages((current) => ({ ...current, [item.id]: false }));
-                setFailedImages((current) => ({ ...current, [item.id]: true }));
-              }}
-            />
-            {imageLoading ? (
-              <View style={styles.imageLoading}>
-                <ActivityIndicator color={colors.emerald} />
-                <Text style={styles.imageLoadingText}>Görsel hazırlanıyor</Text>
-              </View>
-            ) : null}
-            <Pressable accessibilityRole="imagebutton" accessibilityLabel={`${item.transliteration} görselini tam ekran aç`} onPress={() => openPreview(item)} style={({ pressed }) => [styles.openImageButton, pressed && styles.pressed]} />
+            <Pressable accessibilityRole="imagebutton" accessibilityLabel={`${item.transliteration} görselini tam ekran aç`} onPress={() => openPreview(item)} style={({ pressed }) => [styles.imageTapArea, pressed && styles.pressed]}>
+              <Image
+                source={{ uri: item.imageUrl }}
+                style={[styles.nameImage, { height: cardImageHeight }]}
+                resizeMode="cover"
+                onLoad={() => setLoadingImages((current) => ({ ...current, [item.id]: false }))}
+                onLoadEnd={() => setLoadingImages((current) => ({ ...current, [item.id]: false }))}
+                onError={() => {
+                  setLoadingImages((current) => ({ ...current, [item.id]: false }));
+                  setFailedImages((current) => ({ ...current, [item.id]: true }));
+                }}
+              />
+              {imageLoading ? (
+                <View style={styles.imageLoading}>
+                  <ActivityIndicator color={colors.emerald} />
+                  <Text style={styles.imageLoadingText}>Görsel hazırlanıyor</Text>
+                </View>
+              ) : null}
+            </Pressable>
             <View pointerEvents="box-none" style={styles.shareButtonDock}>
               <Pressable accessibilityRole="button" accessibilityLabel={`${item.transliteration} görselini paylaş`} disabled={sharingId === item.id} onPress={() => shareNameCard(item)} style={({ pressed }) => [styles.shareButton, pressed && styles.pressed]}>
                 <Ionicons name={sharingId === item.id ? "hourglass-outline" : "share-social"} size={20} color={colors.emerald} />
@@ -205,11 +206,18 @@ export default function NamesOfAllahScreen() {
             key={`names-preview-${previewStartIndex}-${screenHeight}-${filteredNames.length}`}
             data={filteredNames}
             keyExtractor={(item) => item.id}
+            horizontal={false}
             pagingEnabled
+            snapToInterval={screenHeight}
+            decelerationRate="fast"
+            initialNumToRender={1}
+            maxToRenderPerBatch={1}
+            windowSize={3}
             showsVerticalScrollIndicator={false}
             initialScrollIndex={previewStartIndex}
             getItemLayout={(_, index) => ({ length: screenHeight, offset: screenHeight * index, index })}
             onMomentumScrollEnd={handlePreviewScrollEnd}
+            onScrollToIndexFailed={(info) => setTimeout(() => setPreviewIndex(Math.min(info.index, filteredNames.length - 1)), 50)}
             renderItem={({ item }) => {
               const imageAspectRatio = item.aspectRatio || 9 / 16;
               const previewWidth = Math.min(screenWidth, previewImageHeight * imageAspectRatio);
@@ -304,10 +312,8 @@ const styles = StyleSheet.create({
     direction: "ltr",
     backgroundColor: colors.paper
   },
-  openImageButton: {
-    position: "absolute",
-    inset: 0,
-    zIndex: 2
+  imageTapArea: {
+    position: "relative"
   },
   nameImage: {
     width: "100%",
@@ -444,7 +450,7 @@ const styles = StyleSheet.create({
   },
   previewShareButton: {
     position: "absolute",
-    left: 22,
+    right: 22,
     width: 58,
     height: 58,
     borderRadius: radii.round,
