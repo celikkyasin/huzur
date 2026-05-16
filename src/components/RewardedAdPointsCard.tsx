@@ -2,7 +2,8 @@ import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import { useEffect, useRef, useState } from "react";
 import { ActivityIndicator, Alert, Pressable, StyleSheet, Text, View } from "react-native";
-import { TestIds, useRewardedAd } from "react-native-google-mobile-ads";
+import { useRewardedAd } from "react-native-google-mobile-ads";
+import { adMobUnitIds } from "@/config/adMob";
 import { DAILY_REWARDED_AD_LIMIT, useRewardStore } from "@/store/rewardStore";
 import { colors, radii, shadows, typography } from "@/theme";
 
@@ -13,7 +14,7 @@ export function RewardedAdPointsCard() {
   const awardReward = useRewardStore((state) => state.awardReward);
   const rewardedAdRewardDates = useRewardStore((state) => state.rewardedAdRewardDates);
   const syncRewards = useRewardStore((state) => state.syncRewards);
-  const { isLoaded, isClosed, isEarnedReward, error, load, show } = useRewardedAd(TestIds.REWARDED, {
+  const { isLoaded, isClosed, isEarnedReward, error, load, show } = useRewardedAd(adMobUnitIds.rewarded, {
     requestNonPersonalizedAdsOnly: true
   });
   const todayKey = getDateKey();

@@ -8,9 +8,9 @@ import {
   NativeAsset,
   NativeAssetType,
   NativeMediaAspectRatio,
-  NativeMediaView,
-  TestIds
+  NativeMediaView
 } from "react-native-google-mobile-ads";
+import { adMobUnitIds } from "@/config/adMob";
 import { colors, radii, shadows, typography } from "@/theme";
 
 type NativeMessageAdCardProps = {
@@ -25,7 +25,7 @@ export function NativeMessageAdCard({ style }: NativeMessageAdCardProps) {
     let mounted = true;
     let loadedAd: NativeAd | null = null;
 
-    NativeAd.createForAdRequest(TestIds.NATIVE, {
+    NativeAd.createForAdRequest(adMobUnitIds.native, {
       adChoicesPlacement: NativeAdChoicesPlacement.TOP_RIGHT,
       aspectRatio: NativeMediaAspectRatio.LANDSCAPE,
       startVideoMuted: true
