@@ -30,6 +30,7 @@ export type RewardConfig = {
   prizeDescription: string;
   prizeImageUrl: string;
   prizes: RewardPrize[];
+  eligibility?: RewardEligibility;
 };
 
 export type RewardPrize = {
@@ -39,11 +40,21 @@ export type RewardPrize = {
   imageUrl: string;
 };
 
+export type RewardEligibility = {
+  ok?: boolean;
+  isEligible: boolean;
+  monthKey?: string;
+  rank?: number;
+  points?: number;
+  prize?: RewardPrize;
+};
+
 export type RewardClaimPayload = {
   userCode: string;
   fullName: string;
   contact: string;
   address: string;
+  monthKey?: string;
 };
 
 function hasRewardsApi() {
@@ -96,8 +107,9 @@ export async function fetchRewardLeaderboard(period: LeaderboardPeriod, limit = 
   return Array.isArray(result?.items) ? result.items : null;
 }
 
-export async function fetchRewardConfig() {
-  return requestJson<RewardConfig>("/rewards/config");
+export async function fetchRewardConfig(userCode?: string) {
+  const query = userCode ? `?userCode=${encodeURIComponent(userCode)}` : "";
+  return requestJson<RewardConfig>(`/rewards/config${query}`);
 }
 
 export async function submitRewardClaim(payload: RewardClaimPayload) {

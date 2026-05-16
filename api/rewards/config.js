@@ -1,4 +1,4 @@
-const { getRewardConfig, handleCors, isAdminRequest, json, readBody, setRewardConfig } = require("../_lib/rewardsStore");
+const { getRewardConfig, getRewardEligibility, handleCors, isAdminRequest, json, readBody, setRewardConfig } = require("../_lib/rewardsStore");
 
 module.exports = async function handler(request, response) {
   if (handleCors(request, response)) {
@@ -8,6 +8,14 @@ module.exports = async function handler(request, response) {
   try {
     if (request.method === "GET") {
       const config = await getRewardConfig();
+      const userCode = request.query?.userCode;
+
+      if (userCode) {
+        const eligibility = await getRewardEligibility(userCode);
+        json(response, 200, { ...config, eligibility });
+        return;
+      }
+
       json(response, 200, config);
       return;
     }

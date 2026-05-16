@@ -180,9 +180,18 @@ function getWeekKey() {
   return `${year}-W${week.toString().padStart(2, "0")}`;
 }
 
-function getMonthKey() {
+function getMonthKey(offset = 0) {
   const { year, month } = getIstanbulDate();
-  return `${year}-${month.toString().padStart(2, "0")}`;
+  const date = new Date(Date.UTC(year, month - 1 + offset, 1));
+  return `${date.getUTCFullYear()}-${(date.getUTCMonth() + 1).toString().padStart(2, "0")}`;
+}
+
+function getClaimableMonthKeys() {
+  return [getMonthKey(), getMonthKey(-1)];
+}
+
+function isClaimableMonthKey(monthKey) {
+  return getClaimableMonthKeys().includes(monthKey);
 }
 
 function getLeaderboardKey(period) {
@@ -300,6 +309,36 @@ async function getRewardConfig() {
   };
 }
 
+async function getRewardEligibility(userCode) {
+  const config = await getRewardConfig();
+  const code = normalizeCode(userCode);
+
+  if (!config.isActive || !code) {
+    return { ok: true, isEligible: false };
+  }
+
+  for (const monthKey of getClaimableMonthKeys()) {
+    const monthlyKey = `huzur:leaderboard:month:${monthKey}`;
+    const topResult = await redisCommand("ZREVRANGE", monthlyKey, 0, 1, "WITHSCORES");
+    const leaders = mapLeaderboardResult(topResult);
+    const winner = leaders.find((item) => item.code === code);
+    const prize = winner ? config.prizes.find((item) => item.rank === winner.rank) : null;
+
+    if (winner && prize && winner.points >= config.minimumMonthlyPoints) {
+      return {
+        ok: true,
+        isEligible: true,
+        monthKey,
+        rank: winner.rank,
+        points: winner.points,
+        prize
+      };
+    }
+  }
+
+  return { ok: true, isEligible: false };
+}
+
 async function setRewardConfig(payload) {
   const current = await getRewardConfig();
   const nextConfig = {
@@ -326,7 +365,8 @@ async function submitRewardClaim(payload) {
   const fullName = normalizeText(payload.fullName, 80);
   const contact = normalizeText(payload.contact, 120);
   const address = normalizeText(payload.address, 500);
-  const monthKey = getMonthKey();
+  const requestedMonthKey = normalizeKey(payload.monthKey, getMonthKey());
+  const monthKey = isClaimableMonthKey(requestedMonthKey) ? requestedMonthKey : getMonthKey();
 
   if (!config.isActive) {
     return { ok: false, statusCode: 403, error: "Reward campaign is not active." };
@@ -410,6 +450,7 @@ async function removeRewardUser(code) {
 module.exports = {
   getRewardClaims,
   getRewardConfig,
+  getRewardEligibility,
   getLeaderboard,
   handleCors,
   isAdminRequest,

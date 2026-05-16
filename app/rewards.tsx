@@ -46,15 +46,20 @@ export default function RewardsScreen() {
           .slice(0, LEADERBOARD_LIMIT)
       : [{ code: userCode, points: monthlyPoints, rank: 1, isCurrentUser: true }];
   const currentRank = leaderboard.find((item) => item.isCurrentUser)?.rank || leaderboard.findIndex((item) => item.isCurrentUser) + 1;
-  const currentPrize = rewardConfig?.prizes.find((prize) => prize.rank === currentRank);
-  const isMonthlyWinner = Boolean(rewardConfig?.isActive && currentPrize && currentRank <= 2 && monthlyPoints >= (rewardConfig.minimumMonthlyPoints || 0));
+  const rewardEligibility = rewardConfig?.eligibility;
+  const currentPrize = rewardEligibility?.prize || rewardConfig?.prizes.find((prize) => prize.rank === currentRank);
+  const currentClaimRank = rewardEligibility?.rank || currentRank;
+  const isMonthlyWinner = Boolean(
+    rewardConfig?.isActive &&
+      ((rewardEligibility?.isEligible && rewardEligibility.prize) || (currentPrize && currentRank <= 2 && monthlyPoints >= (rewardConfig.minimumMonthlyPoints || 0)))
+  );
   const lastSyncLabel = lastSyncedAt ? new Date(lastSyncedAt).toLocaleTimeString("tr-TR", { hour: "2-digit", minute: "2-digit" }) : "";
 
   useEffect(() => {
     const refresh = () => {
       void syncRewards();
       void loadLeaderboard("monthly");
-      fetchRewardConfig().then((config) => {
+      fetchRewardConfig(userCode).then((config) => {
         if (config) {
           setRewardConfig(config);
         }
@@ -64,7 +69,7 @@ export default function RewardsScreen() {
     refresh();
     const leaderboardTimer = setInterval(refresh, 30000);
     return () => clearInterval(leaderboardTimer);
-  }, [loadLeaderboard, syncRewards]);
+  }, [loadLeaderboard, syncRewards, userCode]);
 
   const sendRewardClaim = async () => {
     if (isSubmittingClaim) {
@@ -82,7 +87,8 @@ export default function RewardsScreen() {
       userCode,
       fullName: claimFullName,
       contact: claimContact,
-      address: claimAddress
+      address: claimAddress,
+      monthKey: rewardEligibility?.monthKey
     });
 
     setIsSubmittingClaim(false);
@@ -102,7 +108,7 @@ export default function RewardsScreen() {
   const refreshRewards = () => {
     void syncRewards();
     void loadLeaderboard("monthly");
-    fetchRewardConfig().then((config) => {
+    fetchRewardConfig(userCode).then((config) => {
       if (config) {
         setRewardConfig(config);
       }
@@ -278,7 +284,7 @@ export default function RewardsScreen() {
             <View style={styles.claimModalTop}>
               <View style={styles.claimModalCopy}>
                 <Text style={styles.claimTitle}>Ödül teslim bilgileri</Text>
-                <Text style={styles.claimSubtitle}>{currentRank}. sıra: {currentPrize?.title || "Ödül"} - Kod: {userCode}</Text>
+                <Text style={styles.claimSubtitle}>{currentClaimRank}. sıra: {currentPrize?.title || "Ödül"} - Kod: {userCode}</Text>
               </View>
               <Pressable accessibilityRole="button" onPress={() => setClaimFormVisible(false)} style={styles.modalCloseButton}>
                 <Ionicons name="close" size={20} color={colors.emerald} />
