@@ -22,7 +22,7 @@ import { usePrayerTimesStore } from "@/store/prayerTimesStore";
 import { colors, radii, shadows, typography } from "@/theme";
 import type { SettingsItem } from "@/types";
 
-const APP_VERSION = "1.0.69";
+const APP_VERSION = "1.0.70";
 const SUPPORT_EMAIL = "celikkyasin@gmail.com";
 
 type FeedbackModalState = {

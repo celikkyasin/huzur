@@ -3,7 +3,7 @@ import { LinearGradient } from "expo-linear-gradient";
 import { useEffect, useRef, useState } from "react";
 import { ActivityIndicator, Alert, Pressable, StyleSheet, Text, View } from "react-native";
 import { TestIds, useRewardedAd } from "react-native-google-mobile-ads";
-import { useRewardStore } from "@/store/rewardStore";
+import { DAILY_REWARDED_AD_LIMIT, useRewardStore } from "@/store/rewardStore";
 import { colors, radii, shadows, typography } from "@/theme";
 
 export function RewardedAdPointsCard() {
@@ -11,10 +11,15 @@ export function RewardedAdPointsCard() {
   const [pendingShow, setPendingShow] = useState(false);
   const earnedRewardRef = useRef(false);
   const awardReward = useRewardStore((state) => state.awardReward);
+  const rewardedAdRewardDates = useRewardStore((state) => state.rewardedAdRewardDates);
   const syncRewards = useRewardStore((state) => state.syncRewards);
   const { isLoaded, isClosed, isEarnedReward, error, load, show } = useRewardedAd(TestIds.REWARDED, {
     requestNonPersonalizedAdsOnly: true
   });
+  const todayKey = getDateKey();
+  const watchedToday = rewardedAdRewardDates.filter((dateKey) => dateKey === todayKey).length;
+  const remainingRewards = Math.max(DAILY_REWARDED_AD_LIMIT - watchedToday, 0);
+  const isLimitReached = remainingRewards <= 0;
 
   useEffect(() => {
     load();
@@ -51,6 +56,8 @@ export function RewardedAdPointsCard() {
         if (transaction) {
           Alert.alert("5 puan eklendi", "Ödüllü reklamı tamamladığın için puanın hesabına işlendi.");
           void syncRewards();
+        } else {
+          Alert.alert("Günlük sınır doldu", "Bugün ödüllü reklamdan kazanabileceğin 15 hakkı tamamladın.");
         }
       })
       .finally(() => setIsAwarding(false));
@@ -68,6 +75,11 @@ export function RewardedAdPointsCard() {
       return;
     }
 
+    if (isLimitReached) {
+      Alert.alert("Günlük sınır doldu", "Bugün ödüllü reklamdan kazanabileceğin 15 hakkı tamamladın. Yarın tekrar devam edebilirsin.");
+      return;
+    }
+
     if (!isLoaded) {
       setPendingShow(true);
       load();
@@ -78,7 +90,7 @@ export function RewardedAdPointsCard() {
     show();
   };
 
-  const buttonLabel = pendingShow ? "Reklam hazırlanıyor" : isLoaded ? "Reklamı İzle" : "Hazırla ve İzle";
+  const buttonLabel = isLimitReached ? "Bugünlük tamam" : pendingShow ? "Reklam hazırlanıyor" : isLoaded ? "Reklamı İzle" : "Hazırla ve İzle";
 
   return (
     <LinearGradient colors={["#075E47", "#0B6E53", "#D7B35A"]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.card}>
@@ -90,7 +102,7 @@ export function RewardedAdPointsCard() {
           <View style={styles.copy}>
             <Text style={styles.kicker}>ÖDÜLLÜ REKLAM</Text>
             <Text style={styles.title}>Reklam izle, puan kazan</Text>
-            <Text style={styles.subtitle}>Tam izlenen test reklamından sonra hesabına puan eklenir.</Text>
+            <Text style={styles.subtitle}>Günlük en fazla {DAILY_REWARDED_AD_LIMIT} ödüllü reklamdan puan kazanabilirsin.</Text>
           </View>
           <View style={styles.pointsBadge}>
             <Text style={styles.pointsValue}>+5</Text>
@@ -100,17 +112,21 @@ export function RewardedAdPointsCard() {
 
         <View style={styles.footerRow}>
           <View style={styles.statusPill}>
-            <Ionicons name={isLoaded ? "checkmark-circle" : pendingShow ? "time" : "sparkles"} size={15} color={colors.goldSoft} />
-            <Text style={styles.statusText}>{isLoaded ? "Hazır" : pendingShow ? "Yükleniyor" : "Test reklam"}</Text>
+            <Ionicons name={isLimitReached ? "lock-closed" : isLoaded ? "checkmark-circle" : pendingShow ? "time" : "sparkles"} size={15} color={colors.goldSoft} />
+            <Text style={styles.statusText}>{isLimitReached ? "Limit doldu" : isLoaded ? "Hazır" : pendingShow ? "Yükleniyor" : `${watchedToday}/${DAILY_REWARDED_AD_LIMIT}`}</Text>
           </View>
-          <View style={[styles.watchButtonFrame, (isAwarding || pendingShow) && styles.buttonDisabled]}>
+          <View style={[styles.watchButtonFrame, (isAwarding || pendingShow || isLimitReached) && styles.buttonDisabled]}>
             {isAwarding || pendingShow ? <ActivityIndicator color={colors.emerald} /> : <Text style={styles.watchButtonText}>{buttonLabel}</Text>}
-            <Pressable accessibilityRole="button" disabled={isAwarding || pendingShow} onPress={watchAd} style={styles.watchButtonHitArea} />
+            <Pressable accessibilityRole="button" disabled={isAwarding || pendingShow || isLimitReached} onPress={watchAd} style={styles.watchButtonHitArea} />
           </View>
         </View>
       </View>
     </LinearGradient>
   );
+}
+
+function getDateKey(date = new Date()) {
+  return `${date.getFullYear()}-${(date.getMonth() + 1).toString().padStart(2, "0")}-${date.getDate().toString().padStart(2, "0")}`;
 }
 
 const styles = StyleSheet.create({
@@ -226,8 +242,5 @@ const styles = StyleSheet.create({
     color: colors.emerald,
     fontSize: 13,
     fontWeight: "900"
-  },
-  pressed: {
-    opacity: 0.72
   }
 });

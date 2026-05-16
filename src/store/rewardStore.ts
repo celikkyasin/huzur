@@ -4,6 +4,7 @@ import { fetchRewardLeaderboard, isRewardsApiConfigured, syncRewardScore, type L
 
 const REWARD_STORAGE_KEY = "huzur.rewards.v1";
 const MAX_HISTORY_ITEMS = 30;
+export const DAILY_REWARDED_AD_LIMIT = 15;
 
 export type RewardAction = "dhikr33" | "dhikr99" | "fridayShare" | "surahListen" | "rewardedAd" | "prayerDone" | "prayerCompleteDay";
 
@@ -24,6 +25,7 @@ type StoredRewardState = {
   weekKey: string;
   monthKey: string;
   fridayShareRewardDates: string[];
+  rewardedAdRewardDates: string[];
   history: RewardTransaction[];
 };
 
@@ -76,6 +78,7 @@ function createDefaultState(): StoredRewardState {
     weekKey: getWeekKey(),
     monthKey: getMonthKey(),
     fridayShareRewardDates: [],
+    rewardedAdRewardDates: [],
     history: []
   };
 }
@@ -87,6 +90,7 @@ function normalizeStoredState(stored?: Partial<StoredRewardState> | null): Store
     ...stored,
     userCode: stored?.userCode || defaults.userCode,
     fridayShareRewardDates: Array.isArray(stored?.fridayShareRewardDates) ? stored.fridayShareRewardDates.slice(-60) : [],
+    rewardedAdRewardDates: Array.isArray(stored?.rewardedAdRewardDates) ? stored.rewardedAdRewardDates.slice(-450) : [],
     history: Array.isArray(stored?.history) ? stored.history.slice(0, MAX_HISTORY_ITEMS) : []
   };
 
@@ -149,6 +153,13 @@ export const useRewardStore = create<RewardState>((set, get) => ({
       }
     }
 
+    if (action === "rewardedAd") {
+      const todayRewardedAds = state.rewardedAdRewardDates.filter((dateKey) => dateKey === todayKey).length;
+      if (todayRewardedAds >= DAILY_REWARDED_AD_LIMIT) {
+        return null;
+      }
+    }
+
     const transaction: RewardTransaction = {
       id: `${Date.now()}-${Math.floor(Math.random() * 10000)}`,
       action,
@@ -163,6 +174,7 @@ export const useRewardStore = create<RewardState>((set, get) => ({
       weeklyPoints: state.weeklyPoints + points,
       monthlyPoints: state.monthlyPoints + points,
       fridayShareRewardDates: action === "fridayShare" ? [...state.fridayShareRewardDates, todayKey].slice(-60) : state.fridayShareRewardDates,
+      rewardedAdRewardDates: action === "rewardedAd" ? [...state.rewardedAdRewardDates, todayKey].slice(-450) : state.rewardedAdRewardDates,
       history: [transaction, ...state.history].slice(0, MAX_HISTORY_ITEMS)
     };
 
