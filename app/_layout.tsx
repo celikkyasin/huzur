@@ -6,6 +6,7 @@ import { AndroidBackHandler } from "@/components/AndroidBackHandler";
 import { AdMobGate } from "@/components/AdMobGate";
 import { FavoriteDuaGate } from "@/components/FavoriteDuaGate";
 import { HomeLaunchGate } from "@/components/HomeLaunchGate";
+import { HuzurWidgetSyncGate } from "@/components/HuzurWidgetSyncGate";
 import { LocationPermissionGate } from "@/components/LocationPermissionGate";
 import { QuranGate } from "@/components/QuranGate";
 import { RewardGate } from "@/components/RewardGate";
@@ -21,6 +22,7 @@ export default function RootLayout() {
     <>
       <AndroidBackHandler />
       <AdMobGate />
+      <HuzurWidgetSyncGate />
       <HomeLaunchGate />
       <LocationPermissionGate />
       <FavoriteDuaGate />

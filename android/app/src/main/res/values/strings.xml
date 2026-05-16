@@ -1,3 +1,5 @@
 <resources>
   <string name="app_name">Huzur</string>
+  <string name="widget_prayer_times_description">Sıradaki namaz vaktini ve bugünün vakitlerini gösterir.</string>
+  <string name="widget_daily_ayah_description">Günün ayetini ana ekranda gösterir.</string>
 </resources>

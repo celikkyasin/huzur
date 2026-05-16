@@ -1,0 +1,170 @@
+package com.huzur.app
+
+import android.app.PendingIntent
+import android.appwidget.AppWidgetManager
+import android.content.ComponentName
+import android.content.Context
+import android.content.Intent
+import android.net.Uri
+import android.widget.RemoteViews
+import org.json.JSONArray
+import java.text.SimpleDateFormat
+import java.util.Calendar
+import java.util.Locale
+
+object HuzurWidgetUpdater {
+  private const val PREFS_NAME = "huzur_widgets"
+  private const val KEY_PRAYER_TIMES = "prayer_times_json"
+  private const val KEY_LOCATION = "location_label"
+  private const val KEY_SOURCE = "source_label"
+  private const val KEY_AYAH_ARABIC = "ayah_arabic"
+  private const val KEY_AYAH_TRANSLATION = "ayah_translation"
+  private const val KEY_AYAH_SOURCE = "ayah_source"
+
+  private val defaultPrayerTimes = listOf(
+    PrayerEntry("İmsak", "05:23"),
+    PrayerEntry("Güneş", "06:50"),
+    PrayerEntry("Öğle", "13:21"),
+    PrayerEntry("İkindi", "16:58"),
+    PrayerEntry("Akşam", "20:04"),
+    PrayerEntry("Yatsı", "21:35")
+  )
+
+  fun saveData(
+    context: Context,
+    prayerTimesJson: String,
+    locationLabel: String,
+    sourceLabel: String,
+    ayahArabic: String,
+    ayahTranslation: String,
+    ayahSource: String
+  ) {
+    context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+      .edit()
+      .putString(KEY_PRAYER_TIMES, prayerTimesJson)
+      .putString(KEY_LOCATION, locationLabel)
+      .putString(KEY_SOURCE, sourceLabel)
+      .putString(KEY_AYAH_ARABIC, ayahArabic)
+      .putString(KEY_AYAH_TRANSLATION, ayahTranslation)
+      .putString(KEY_AYAH_SOURCE, ayahSource)
+      .apply()
+
+    updateAll(context)
+  }
+
+  fun updateAll(context: Context) {
+    val manager = AppWidgetManager.getInstance(context)
+    updatePrayerWidgets(context, manager)
+    updateAyahWidgets(context, manager)
+  }
+
+  private fun updatePrayerWidgets(context: Context, manager: AppWidgetManager) {
+    val ids = manager.getAppWidgetIds(ComponentName(context, PrayerTimesWidgetProvider::class.java))
+    ids.forEach { widgetId ->
+      manager.updateAppWidget(widgetId, buildPrayerViews(context))
+    }
+  }
+
+  private fun updateAyahWidgets(context: Context, manager: AppWidgetManager) {
+    val ids = manager.getAppWidgetIds(ComponentName(context, DailyAyahWidgetProvider::class.java))
+    ids.forEach { widgetId ->
+      manager.updateAppWidget(widgetId, buildAyahViews(context))
+    }
+  }
+
+  fun buildPrayerViews(context: Context): RemoteViews {
+    val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+    val times = parsePrayerTimes(prefs.getString(KEY_PRAYER_TIMES, null))
+    val location = prefs.getString(KEY_LOCATION, "Türkiye") ?: "Türkiye"
+    val source = prefs.getString(KEY_SOURCE, "Diyanet vakitleri") ?: "Diyanet vakitleri"
+    val state = getNextPrayerState(times)
+    val date = SimpleDateFormat("d MMMM EEEE", Locale("tr", "TR")).format(Calendar.getInstance().time)
+    val views = RemoteViews(context.packageName, R.layout.widget_prayer_times)
+
+    views.setTextViewText(R.id.widget_prayer_location, location)
+    views.setTextViewText(R.id.widget_prayer_source, source)
+    views.setTextViewText(R.id.widget_prayer_date, date)
+    views.setTextViewText(R.id.widget_next_prayer_name, state.next.name)
+    views.setTextViewText(R.id.widget_next_prayer_time, state.next.time)
+    views.setTextViewText(R.id.widget_next_prayer_countdown, "${state.countdown} kaldı")
+
+    val visible = buildVisiblePrayerTimes(times, state.nextIndex)
+    val nameIds = intArrayOf(R.id.widget_time_name_1, R.id.widget_time_name_2, R.id.widget_time_name_3, R.id.widget_time_name_4)
+    val timeIds = intArrayOf(R.id.widget_time_value_1, R.id.widget_time_value_2, R.id.widget_time_value_3, R.id.widget_time_value_4)
+    for (index in nameIds.indices) {
+      val item = visible.getOrNull(index)
+      views.setTextViewText(nameIds[index], item?.name ?: "--")
+      views.setTextViewText(timeIds[index], item?.time ?: "--:--")
+    }
+
+    views.setOnClickPendingIntent(R.id.widget_prayer_root, buildLaunchIntent(context, "huzur://prayer-times"))
+    return views
+  }
+
+  fun buildAyahViews(context: Context): RemoteViews {
+    val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+    val views = RemoteViews(context.packageName, R.layout.widget_daily_ayah)
+    views.setTextViewText(R.id.widget_ayah_arabic, prefs.getString(KEY_AYAH_ARABIC, "اِنَّ مَعَ الْعُسْرِ يُسْرًا"))
+    views.setTextViewText(R.id.widget_ayah_translation, prefs.getString(KEY_AYAH_TRANSLATION, "Şüphesiz her zorlukla beraber bir kolaylık vardır."))
+    views.setTextViewText(R.id.widget_ayah_source, prefs.getString(KEY_AYAH_SOURCE, "İnşirah Suresi, 6"))
+    views.setOnClickPendingIntent(R.id.widget_ayah_root, buildLaunchIntent(context, "huzur://"))
+    return views
+  }
+
+  private fun buildLaunchIntent(context: Context, url: String): PendingIntent {
+    val intent = Intent(context, MainActivity::class.java).apply {
+      action = Intent.ACTION_VIEW
+      data = Uri.parse(url)
+      flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
+    }
+    return PendingIntent.getActivity(context, url.hashCode(), intent, PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
+  }
+
+  private fun parsePrayerTimes(raw: String?): List<PrayerEntry> {
+    if (raw.isNullOrBlank()) return defaultPrayerTimes
+
+    return runCatching {
+      val array = JSONArray(raw)
+      List(array.length()) { index ->
+        val item = array.getJSONObject(index)
+        PrayerEntry(
+          name = item.optString("name", "--"),
+          time = item.optString("time", "--:--")
+        )
+      }.filter { it.time.contains(":") }
+    }.getOrElse { defaultPrayerTimes }
+  }
+
+  private fun buildVisiblePrayerTimes(times: List<PrayerEntry>, nextIndex: Int): List<PrayerEntry> {
+    if (times.isEmpty()) return emptyList()
+    return List(minOf(4, times.size)) { offset ->
+      times[(nextIndex + offset) % times.size]
+    }
+  }
+
+  private fun getNextPrayerState(times: List<PrayerEntry>): PrayerState {
+    val now = Calendar.getInstance()
+    val nowMinutes = now.get(Calendar.HOUR_OF_DAY) * 60 + now.get(Calendar.MINUTE)
+    val indexed = times.mapIndexed { index, prayer -> IndexedPrayer(index, prayer, parseMinutes(prayer.time)) }
+    val next = indexed.firstOrNull { it.minutes > nowMinutes } ?: indexed.first()
+    val remaining = if (next.minutes > nowMinutes) next.minutes - nowMinutes else 1440 - nowMinutes + next.minutes
+    return PrayerState(next.prayer, next.index, formatCountdown(remaining))
+  }
+
+  private fun parseMinutes(time: String): Int {
+    val parts = time.split(":")
+    val hour = parts.getOrNull(0)?.toIntOrNull() ?: 0
+    val minute = parts.getOrNull(1)?.toIntOrNull() ?: 0
+    return hour * 60 + minute
+  }
+
+  private fun formatCountdown(totalMinutes: Int): String {
+    val hours = totalMinutes / 60
+    val minutes = totalMinutes % 60
+    return if (hours == 0) "${minutes} dk" else "${hours} sa ${minutes} dk"
+  }
+
+  private data class PrayerEntry(val name: String, val time: String)
+  private data class IndexedPrayer(val index: Int, val prayer: PrayerEntry, val minutes: Int)
+  private data class PrayerState(val next: PrayerEntry, val nextIndex: Int, val countdown: String)
+}
