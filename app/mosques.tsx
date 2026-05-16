@@ -3,6 +3,7 @@ import { ActivityIndicator, Alert, Linking, Pressable, StyleSheet, Text, View, t
 import { Ionicons } from "@expo/vector-icons";
 import { AppHeader } from "@/components/AppHeader";
 import { MosqueCard } from "@/components/MosqueCard";
+import { NativeMessageAdCard } from "@/components/NativeMessageAdCard";
 import { Card } from "@/components/ui/Card";
 import { PrimaryButton } from "@/components/ui/PrimaryButton";
 import { ScreenContainer } from "@/components/ui/ScreenContainer";
@@ -166,7 +167,10 @@ export default function MosquesScreen() {
       ) : null}
 
       {visibleMosques.map((mosque, index) => (
-        <MosqueCard key={mosque.id} mosque={mosque} featured={index === 0} onDirections={openDirections} />
+        <View key={mosque.id}>
+          <MosqueCard mosque={mosque} featured={index === 0} onDirections={openDirections} />
+          {index === 2 ? <NativeMessageAdCard style={styles.mosqueAdCard} /> : null}
+        </View>
       ))}
     </ScreenContainer>
   );
@@ -394,5 +398,8 @@ const styles = StyleSheet.create({
   loadingText: {
     color: colors.muted,
     fontWeight: "800"
+  },
+  mosqueAdCard: {
+    marginBottom: 14
   }
 });

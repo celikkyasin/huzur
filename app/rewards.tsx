@@ -8,20 +8,13 @@ import { PrimaryButton } from "@/components/ui/PrimaryButton";
 import { ScreenContainer } from "@/components/ui/ScreenContainer";
 import { fetchRewardConfig, submitRewardClaim, type RemoteLeaderboardItem, type RewardConfig, type RewardPrize } from "@/services/rewardsApi";
 import { useRewardStore } from "@/store/rewardStore";
-import { colors, radii, shadows } from "@/theme";
+import { colors, radii, shadows, typography } from "@/theme";
 
 const LEADERBOARD_LIMIT = 20;
 
 type LeaderboardItem = RemoteLeaderboardItem & {
   isCurrentUser?: boolean;
 };
-
-const leaderboardSamples: LeaderboardItem[] = [
-  { code: "HZR-82914", points: 420 },
-  { code: "HZR-51672", points: 315 },
-  { code: "HZR-74038", points: 260 },
-  { code: "HZR-19305", points: 185 }
-];
 
 export default function RewardsScreen() {
   const [rewardConfig, setRewardConfig] = useState<RewardConfig | null>(null);
@@ -45,10 +38,13 @@ export default function RewardsScreen() {
   const loadLeaderboard = useRewardStore((state) => state.loadLeaderboard);
   const leaderboard: LeaderboardItem[] =
     remoteLeaderboard.length > 0
-      ? remoteLeaderboard.slice(0, LEADERBOARD_LIMIT).map((item) => ({ ...item, isCurrentUser: item.code === userCode }))
-      : [...leaderboardSamples.filter((item) => item.code !== userCode), { code: userCode, points: monthlyPoints, isCurrentUser: true }]
+      ? remoteLeaderboard
+          .filter((item) => item.points > 0 || item.code === userCode)
+          .map((item) => ({ ...item, isCurrentUser: item.code === userCode }))
+          .concat(remoteLeaderboard.some((item) => item.code === userCode) ? [] : [{ code: userCode, points: monthlyPoints, isCurrentUser: true }])
           .sort((first, second) => second.points - first.points)
-          .slice(0, LEADERBOARD_LIMIT);
+          .slice(0, LEADERBOARD_LIMIT)
+      : [{ code: userCode, points: monthlyPoints, rank: 1, isCurrentUser: true }];
   const currentRank = leaderboard.find((item) => item.isCurrentUser)?.rank || leaderboard.findIndex((item) => item.isCurrentUser) + 1;
   const currentPrize = rewardConfig?.prizes.find((prize) => prize.rank === currentRank);
   const isMonthlyWinner = Boolean(rewardConfig?.isActive && currentPrize && currentRank <= 2 && monthlyPoints >= (rewardConfig.minimumMonthlyPoints || 0));
@@ -205,26 +201,45 @@ export default function RewardsScreen() {
           </View>
         ) : null}
 
-        <View style={styles.rewardRules}>
-          <View style={styles.rewardRule}>
-            <Ionicons name="finger-print" size={15} color={colors.emerald} />
-            <Text style={styles.rewardRuleText}>33 zikir: +3</Text>
+        <View style={styles.rewardRulesPanel}>
+          <View style={styles.rewardRulesHeader}>
+            <View>
+              <Text style={styles.rewardRulesKicker}>PUAN KAZANIMLARI</Text>
+              <Text style={styles.rewardRulesTitle}>Puanlar nasıl veriliyor?</Text>
+            </View>
+            <View style={styles.rewardRulesBadge}>
+              <Ionicons name="sparkles" size={17} color={colors.gold} />
+            </View>
           </View>
-          <View style={styles.rewardRule}>
-            <Ionicons name="sparkles" size={15} color={colors.emerald} />
-            <Text style={styles.rewardRuleText}>99 zikir: toplam +10</Text>
-          </View>
-          <View style={styles.rewardRule}>
-            <Ionicons name="share-social" size={15} color={colors.emerald} />
-            <Text style={styles.rewardRuleText}>Cuma günü ilk paylaşım: +2</Text>
-          </View>
-          <View style={styles.rewardRule}>
-            <Ionicons name="play-circle" size={15} color={colors.emerald} />
-            <Text style={styles.rewardRuleText}>Dinlenen dakika: +1</Text>
-          </View>
-          <View style={styles.rewardRule}>
-            <Ionicons name="checkmark-circle" size={15} color={colors.emerald} />
-            <Text style={styles.rewardRuleText}>Namaz takibi: vakit +2, gün +10</Text>
+          <View style={styles.rewardRulesGrid}>
+            <View style={styles.rewardRule}>
+              <View style={styles.rewardRuleIcon}>
+                <Ionicons name="finger-print" size={17} color={colors.emerald} />
+              </View>
+              <Text style={styles.rewardRuleTitle}>Zikir</Text>
+              <Text style={styles.rewardRuleText}>33 zikir +3, 99 zikir toplam +10</Text>
+            </View>
+            <View style={styles.rewardRule}>
+              <View style={styles.rewardRuleIcon}>
+                <Ionicons name="share-social" size={17} color={colors.emerald} />
+              </View>
+              <Text style={styles.rewardRuleTitle}>Paylaşım</Text>
+              <Text style={styles.rewardRuleText}>Cuma günü ilk paylaşım +2</Text>
+            </View>
+            <View style={styles.rewardRule}>
+              <View style={styles.rewardRuleIcon}>
+                <Ionicons name="play-circle" size={17} color={colors.emerald} />
+              </View>
+              <Text style={styles.rewardRuleTitle}>Dinleme</Text>
+              <Text style={styles.rewardRuleText}>Dinlenen her dakika +1</Text>
+            </View>
+            <View style={styles.rewardRule}>
+              <View style={styles.rewardRuleIcon}>
+                <Ionicons name="checkmark-circle" size={17} color={colors.emerald} />
+              </View>
+              <Text style={styles.rewardRuleTitle}>Namaz</Text>
+              <Text style={styles.rewardRuleText}>Vakit +2, tam gün +10</Text>
+            </View>
           </View>
         </View>
 
@@ -521,27 +536,77 @@ const styles = StyleSheet.create({
     marginTop: 3,
     fontWeight: "700"
   },
-  rewardRules: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    gap: 8,
-    marginTop: 14
-  },
-  rewardRule: {
-    minHeight: 34,
-    borderRadius: radii.round,
+  rewardRulesPanel: {
+    marginTop: 16,
+    borderRadius: radii.lg,
     backgroundColor: colors.paper,
     borderWidth: 1,
     borderColor: colors.line,
+    padding: 14
+  },
+  rewardRulesHeader: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 5,
-    paddingHorizontal: 10
+    justifyContent: "space-between",
+    gap: 12,
+    marginBottom: 12
+  },
+  rewardRulesKicker: {
+    color: colors.gold,
+    fontSize: 10,
+    letterSpacing: 0,
+    fontWeight: "900"
+  },
+  rewardRulesTitle: {
+    color: colors.ink,
+    fontFamily: typography.title,
+    fontSize: 20,
+    lineHeight: 25,
+    marginTop: 2,
+    fontWeight: "900"
+  },
+  rewardRulesBadge: {
+    width: 38,
+    height: 38,
+    borderRadius: radii.round,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: colors.goldSoft
+  },
+  rewardRulesGrid: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 10
+  },
+  rewardRule: {
+    width: "48%",
+    minHeight: 118,
+    borderRadius: radii.md,
+    backgroundColor: colors.white,
+    borderWidth: 1,
+    borderColor: "rgba(7,94,71,0.1)",
+    padding: 12
+  },
+  rewardRuleIcon: {
+    width: 32,
+    height: 32,
+    borderRadius: radii.round,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: colors.emeraldSoft,
+    marginBottom: 10
+  },
+  rewardRuleTitle: {
+    color: colors.ink,
+    fontSize: 13,
+    fontWeight: "900"
   },
   rewardRuleText: {
-    color: colors.emerald,
+    color: colors.muted,
     fontSize: 11,
-    fontWeight: "900"
+    lineHeight: 16,
+    marginTop: 4,
+    fontWeight: "800"
   },
   leaderboard: {
     marginTop: 16,
