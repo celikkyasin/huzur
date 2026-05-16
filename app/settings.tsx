@@ -22,7 +22,7 @@ import { usePrayerTimesStore } from "@/store/prayerTimesStore";
 import { colors, radii, shadows, typography } from "@/theme";
 import type { SettingsItem } from "@/types";
 
-const APP_VERSION = "1.0.63";
+const APP_VERSION = "1.0.64";
 const SUPPORT_EMAIL = "celikkyasin@gmail.com";
 
 type FeedbackModalState = {
@@ -42,6 +42,7 @@ const supportItems: SettingsItem[] = [
 
 export default function SettingsScreen() {
   const [notificationsEnabled, setNotificationsEnabled] = useState(false);
+  const [notificationsExpanded, setNotificationsExpanded] = useState(false);
   const [isUpdatingNotifications, setIsUpdatingNotifications] = useState(false);
   const [notificationPreferences, setNotificationPreferences] = useState<PrayerNotificationPreferences>({ reminderMinutes: 15, soundMode: "default" });
   const [selectedReminderMinutes, setSelectedReminderMinutes] = useState(15);
@@ -176,7 +177,7 @@ export default function SettingsScreen() {
 
   const handleSettingPress = (id: string) => {
     if (id === "prayer") {
-      void toggleNotifications();
+      setNotificationsExpanded((current) => !current);
       return;
     }
     if (id === "about") {
@@ -215,17 +216,7 @@ export default function SettingsScreen() {
   );
 
   const NotificationPreferencesPanel = () => (
-    <Card style={styles.notificationPanel}>
-      <View style={styles.notificationHeader}>
-        <View style={styles.notificationIcon}>
-          <Ionicons name="notifications" size={21} color={colors.emerald} />
-        </View>
-        <View style={styles.notificationCopy}>
-          <Text style={styles.notificationTitle}>Namaz vakti uyarıları</Text>
-          <Text style={styles.notificationSubtitle}>Dakikayı hassas seçebilir, sesi sadece Huzur hatırlatmaları için belirleyebilirsiniz.</Text>
-        </View>
-      </View>
-
+    <View style={styles.notificationPanel}>
       <View style={styles.preferenceTitleRow}>
         <Text style={styles.preferenceLabel}>Ne kadar önce haber versin?</Text>
         <Text style={styles.preferenceValue}>{selectedReminderMinutes === 0 ? "Vakit girince" : `${selectedReminderMinutes} dk önce`}</Text>
@@ -309,7 +300,7 @@ export default function SettingsScreen() {
         <Ionicons name="shield-checkmark" size={16} color={colors.emerald} />
         <Text style={styles.soundNoteText}>Ses tercihi uygulama içinden seçilir; telefonun genel bildirim sesi değiştirilmez.</Text>
       </View>
-    </Card>
+    </View>
   );
 
   return (
@@ -347,10 +338,22 @@ export default function SettingsScreen() {
       </Pressable>
 
       <SectionTitle title="Tercihler" />
-      <Card style={styles.rows}>
-        <SettingsRow item={preferenceItems[0]} isLast onPress={() => handleSettingPress("prayer")} showChevron={false} rightElement={<NotificationSwitch />} />
+      <Card style={styles.notificationCard}>
+        <View style={styles.notificationHeader}>
+          <Pressable accessibilityRole="button" accessibilityState={{ expanded: notificationsExpanded }} onPress={() => handleSettingPress("prayer")} style={({ pressed }) => [styles.notificationHeaderButton, pressed && styles.pressed]}>
+            <View style={styles.notificationIcon}>
+              <Ionicons name="notifications" size={21} color={colors.emerald} />
+            </View>
+            <View style={styles.notificationCopy}>
+              <Text style={styles.notificationTitle}>Namaz vakti bildirimleri</Text>
+              <Text style={styles.notificationSubtitle}>{notificationsEnabled ? `${selectedReminderMinutes === 0 ? "Vakit girince" : `${selectedReminderMinutes} dk önce`} haber verir` : "Kapalı"}</Text>
+            </View>
+            <Ionicons name={notificationsExpanded ? "chevron-up" : "chevron-down"} size={20} color={colors.muted} />
+          </Pressable>
+          <NotificationSwitch />
+        </View>
+        {notificationsExpanded ? <NotificationPreferencesPanel /> : null}
       </Card>
-      <NotificationPreferencesPanel />
 
       <SectionTitle title="Destek" />
       <Card style={styles.rows}>
@@ -383,9 +386,12 @@ function FeedbackModal({ modal, onClose }: { modal: FeedbackModalState; onClose:
     <Modal visible={modal.visible} transparent animationType="fade" onRequestClose={onClose}>
       <View style={styles.modalBackdrop}>
         <View style={styles.modalCard}>
-          <Pressable accessibilityRole="button" accessibilityLabel="Kapat" onPress={onClose} style={({ pressed }) => [styles.modalCloseButton, pressed && styles.pressed]}>
-            <Ionicons name="close" size={20} color={colors.emerald} />
-          </Pressable>
+          <View style={styles.modalTopRow}>
+            <View />
+            <Pressable accessibilityRole="button" accessibilityLabel="Kapat" onPress={onClose} style={({ pressed }) => [styles.modalCloseButton, pressed && styles.pressed]}>
+              <Ionicons name="close" size={20} color={colors.emerald} />
+            </Pressable>
+          </View>
           <View style={[styles.modalIcon, { backgroundColor: modal.tone === "warning" ? "#FFF4D8" : colors.emeraldSoft }]}>
             <Ionicons name={modal.icon} size={30} color={toneColor} />
           </View>
@@ -534,14 +540,27 @@ const styles = StyleSheet.create({
   rows: {
     paddingVertical: 2
   },
+  notificationCard: {
+    paddingVertical: 12,
+    gap: 12
+  },
   notificationPanel: {
-    marginTop: 12,
+    borderTopWidth: 1,
+    borderTopColor: colors.line,
+    paddingTop: 14,
     gap: 14
   },
   notificationHeader: {
     flexDirection: "row",
     gap: 12,
-    alignItems: "flex-start"
+    alignItems: "center"
+  },
+  notificationHeaderButton: {
+    flex: 1,
+    minWidth: 0,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12
   },
   notificationIcon: {
     width: 44,
@@ -778,11 +797,14 @@ const styles = StyleSheet.create({
     borderColor: colors.line,
     ...shadows.card
   },
+  modalTopRow: {
+    width: "100%",
+    minHeight: 36,
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center"
+  },
   modalCloseButton: {
-    position: "absolute",
-    right: 14,
-    top: 14,
-    zIndex: 2,
     width: 36,
     height: 36,
     borderRadius: 18,
