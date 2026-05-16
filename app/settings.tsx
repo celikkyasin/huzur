@@ -22,7 +22,7 @@ import { usePrayerTimesStore } from "@/store/prayerTimesStore";
 import { colors, radii, shadows, typography } from "@/theme";
 import type { SettingsItem } from "@/types";
 
-const APP_VERSION = "1.0.62";
+const APP_VERSION = "1.0.63";
 const SUPPORT_EMAIL = "celikkyasin@gmail.com";
 
 type FeedbackModalState = {
@@ -89,8 +89,15 @@ export default function SettingsScreen() {
 
     setIsUpdatingNotifications(true);
     try {
-      const result = await setPrayerNotificationsEnabled(nextValue, prayerTimes, notificationPreferences);
+      const preferencesForToggle: PrayerNotificationPreferences = {
+        ...notificationPreferences,
+        reminderMinutes: selectedReminderMinutes
+      };
+      const result = await setPrayerNotificationsEnabled(nextValue, prayerTimes, preferencesForToggle);
       setNotificationsEnabled(result.enabled);
+      if (result.enabled) {
+        setNotificationPreferences(preferencesForToggle);
+      }
 
       if (!result.permissionGranted) {
         showFeedback({
@@ -104,7 +111,9 @@ export default function SettingsScreen() {
           tone: result.enabled ? "success" : "info",
           icon: result.enabled ? "checkmark-circle" : "moon",
           title: result.enabled ? "Hatırlatmalar açıldı" : "Hatırlatmalar kapatıldı",
-          message: result.enabled ? `${notificationPreferences.reminderMinutes} dakika önce uyarı hazır. Ses tercihin: ${soundModeOptions.find((option) => option.mode === notificationPreferences.soundMode)?.label ?? "Kısa uyarı"}.` : "Namaz vakti hatırlatmaları kapatıldı."
+          message: result.enabled
+            ? `${preferencesForToggle.reminderMinutes === 0 ? "Vakit girince" : `${preferencesForToggle.reminderMinutes} dakika önce`} uyarı hazır. Ses tercihin: ${soundModeOptions.find((option) => option.mode === preferencesForToggle.soundMode)?.label ?? "Kısa uyarı"}.`
+            : "Namaz vakti hatırlatmaları kapatıldı."
         });
       }
     } catch {
@@ -374,6 +383,9 @@ function FeedbackModal({ modal, onClose }: { modal: FeedbackModalState; onClose:
     <Modal visible={modal.visible} transparent animationType="fade" onRequestClose={onClose}>
       <View style={styles.modalBackdrop}>
         <View style={styles.modalCard}>
+          <Pressable accessibilityRole="button" accessibilityLabel="Kapat" onPress={onClose} style={({ pressed }) => [styles.modalCloseButton, pressed && styles.pressed]}>
+            <Ionicons name="close" size={20} color={colors.emerald} />
+          </Pressable>
           <View style={[styles.modalIcon, { backgroundColor: modal.tone === "warning" ? "#FFF4D8" : colors.emeraldSoft }]}>
             <Ionicons name={modal.icon} size={30} color={toneColor} />
           </View>
@@ -393,6 +405,9 @@ function AboutModal({ visible, onClose, version }: { visible: boolean; onClose: 
     <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
       <View style={styles.modalBackdrop}>
         <View style={styles.aboutCard}>
+          <Pressable accessibilityRole="button" accessibilityLabel="Kapat" onPress={onClose} style={({ pressed }) => [styles.aboutCloseButton, pressed && styles.pressed]}>
+            <Ionicons name="close" size={20} color={colors.white} />
+          </Pressable>
           <LinearGradient colors={[colors.emerald, "#0B7A5C"]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.aboutHero}>
             <View style={styles.aboutLogo}>
               <Ionicons name="moon" size={30} color={colors.gold} />
@@ -757,10 +772,23 @@ const styles = StyleSheet.create({
     borderRadius: 28,
     backgroundColor: colors.paper,
     padding: 22,
+    paddingTop: 28,
     alignItems: "center",
     borderWidth: 1,
     borderColor: colors.line,
     ...shadows.card
+  },
+  modalCloseButton: {
+    position: "absolute",
+    right: 14,
+    top: 14,
+    zIndex: 2,
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: colors.emeraldSoft,
+    alignItems: "center",
+    justifyContent: "center"
   },
   modalIcon: {
     width: 66,
@@ -810,6 +838,20 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: colors.line,
     ...shadows.card
+  },
+  aboutCloseButton: {
+    position: "absolute",
+    right: 14,
+    top: 14,
+    zIndex: 3,
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: "rgba(255,255,255,0.16)",
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.22)",
+    alignItems: "center",
+    justifyContent: "center"
   },
   aboutHero: {
     padding: 22,
