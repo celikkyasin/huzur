@@ -104,7 +104,7 @@ function renderAdmin(response, token, config) {
       </div>
     </div>
     <div class="panel">
-      <div class="hint">1080x1920 premium PNG/JPG yukle. Uygulama acildiginda bu gercek gorselleri gosterir.</div>
+      <div class="hint">1080x1920 premium PNG/JPG yukle. Dosyalar yuklenirken kalite korunarak otomatik kucultulur.</div>
       <div class="form">
         <input type="hidden" id="admin-token" value="${escapeHtml(token)}" />
         <div>
@@ -182,15 +182,52 @@ function renderAdmin(response, token, config) {
       });
     }
 
+    function loadImage(dataUrl) {
+      return new Promise((resolve, reject) => {
+        const image = new Image();
+        image.onload = () => resolve(image);
+        image.onerror = reject;
+        image.src = dataUrl;
+      });
+    }
+
+    function canvasToBlob(canvas, type, quality) {
+      return new Promise((resolve) => canvas.toBlob(resolve, type, quality));
+    }
+
+    async function compressImageFile(file) {
+      const originalDataUrl = await readFileAsDataUrl(file);
+      const image = await loadImage(originalDataUrl);
+      const maxLongEdge = 1920;
+      const scale = Math.min(1, maxLongEdge / Math.max(image.naturalWidth, image.naturalHeight));
+      const width = Math.max(1, Math.round(image.naturalWidth * scale));
+      const height = Math.max(1, Math.round(image.naturalHeight * scale));
+      const canvas = document.createElement("canvas");
+      canvas.width = width;
+      canvas.height = height;
+      const context = canvas.getContext("2d", { alpha: false });
+      context.fillStyle = "#fffaf1";
+      context.fillRect(0, 0, width, height);
+      context.drawImage(image, 0, 0, width, height);
+      const blob = (await canvasToBlob(canvas, "image/webp", 0.82)) || (await canvasToBlob(canvas, "image/jpeg", 0.84));
+      if (!blob) return { dataUrl: originalDataUrl, fileName: file.name, originalSize: file.size, compressedSize: file.size };
+      const dataUrl = await readFileAsDataUrl(blob);
+      const fileName = file.name.replace(/\.[^.]+$/, "") + (blob.type === "image/webp" ? ".webp" : ".jpg");
+      return { dataUrl, fileName, originalSize: file.size, compressedSize: blob.size };
+    }
+
     async function uploadFileIfNeeded(order) {
       const file = document.getElementById("file").files[0];
       if (!file) return document.getElementById("imageUrl").value.trim();
-      setStatus("Gorsel yukleniyor...");
-      const imageData = await readFileAsDataUrl(file);
+      setStatus("Gorsel kucultuluyor...");
+      const compressed = await compressImageFile(file);
+      const beforeMb = (compressed.originalSize / 1024 / 1024).toFixed(2);
+      const afterMb = (compressed.compressedSize / 1024 / 1024).toFixed(2);
+      setStatus("Gorsel yukleniyor... " + beforeMb + " MB -> " + afterMb + " MB");
       const response = await fetch("/names-of-allah/upload?token=" + encodeURIComponent(token), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ order, fileName: file.name, imageData })
+        body: JSON.stringify({ order, fileName: compressed.fileName, imageData: compressed.dataUrl })
       });
       const body = await response.json();
       if (!response.ok || !body.url) throw new Error(body.error || "Upload failed");

@@ -3,7 +3,7 @@ import { ActivityIndicator, Alert, FlatList, Image, Modal, Pressable, StyleSheet
 import * as FileSystem from "expo-file-system/legacy";
 import * as Sharing from "expo-sharing";
 import { Ionicons } from "@expo/vector-icons";
-import { AppHeader } from "@/components/AppHeader";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Card } from "@/components/ui/Card";
 import { ScreenContainer } from "@/components/ui/ScreenContainer";
 import { namesOfAllah, type AllahName } from "@/data/namesOfAllah";
@@ -28,6 +28,7 @@ async function getNameImageUri(item: AllahName) {
 
 export default function NamesOfAllahScreen() {
   const { width: screenWidth, height: screenHeight } = useWindowDimensions();
+  const insets = useSafeAreaInsets();
   const [query, setQuery] = useState("");
   const [sharingId, setSharingId] = useState<string | null>(null);
   const [items, setItems] = useState<AllahName[]>(namesOfAllah);
@@ -35,7 +36,7 @@ export default function NamesOfAllahScreen() {
   const [failedImages, setFailedImages] = useState<Record<string, boolean>>({});
   const [previewIndex, setPreviewIndex] = useState<number | null>(null);
   const [previewStartIndex, setPreviewStartIndex] = useState(0);
-  const cardImageHeight = Math.min(620, Math.max(460, (screenWidth - 40) * 1.55));
+  const cardImageHeight = Math.min(520, Math.max(420, (screenWidth - 40) * 1.42));
   const previewImageHeight = Math.max(320, screenHeight - 140);
   const filteredNames = useMemo(() => {
     const term = query.trim().toLocaleLowerCase("tr-TR");
@@ -116,7 +117,7 @@ export default function NamesOfAllahScreen() {
     return (
       <View style={styles.nameCardWrap}>
         {hasImage && !imageFailed ? (
-          <Pressable accessibilityRole="imagebutton" accessibilityLabel={`${item.transliteration} görselini tam ekran aç`} onPress={() => openPreview(item)} style={({ pressed }) => [styles.imageFrame, pressed && styles.pressed]}>
+          <View style={styles.imageFrame}>
             <Image
               source={{ uri: item.imageUrl }}
               style={[styles.nameImage, { height: cardImageHeight }]}
@@ -134,7 +135,13 @@ export default function NamesOfAllahScreen() {
                 <Text style={styles.imageLoadingText}>Görsel hazırlanıyor</Text>
               </View>
             ) : null}
-          </Pressable>
+            <Pressable accessibilityRole="imagebutton" accessibilityLabel={`${item.transliteration} görselini tam ekran aç`} onPress={() => openPreview(item)} style={({ pressed }) => [styles.openImageButton, pressed && styles.pressed]} />
+            <View pointerEvents="box-none" style={styles.shareButtonDock}>
+              <Pressable accessibilityRole="button" accessibilityLabel={`${item.transliteration} görselini paylaş`} disabled={sharingId === item.id} onPress={() => shareNameCard(item)} style={({ pressed }) => [styles.shareButton, pressed && styles.pressed]}>
+                <Ionicons name={sharingId === item.id ? "hourglass-outline" : "share-social"} size={20} color={colors.emerald} />
+              </Pressable>
+            </View>
+          </View>
         ) : (
           <Card style={styles.placeholderCard}>
             <View style={styles.placeholderHeader}>
@@ -148,16 +155,12 @@ export default function NamesOfAllahScreen() {
             <Text style={styles.meaning}>{item.meaning}</Text>
           </Card>
         )}
-        <Pressable accessibilityRole="button" accessibilityLabel={`${item.transliteration} görselini paylaş`} disabled={sharingId === item.id || !hasImage} onPress={() => shareNameCard(item)} style={({ pressed }) => [styles.shareButton, pressed && styles.pressed, !hasImage && styles.disabledShareButton]}>
-          <Ionicons name={sharingId === item.id ? "hourglass-outline" : "share-social"} size={20} color={hasImage ? colors.emerald : colors.muted} />
-        </Pressable>
       </View>
     );
   };
 
   return (
     <ScreenContainer scroll={false} contentStyle={styles.screen}>
-      <AppHeader title="Allah'ın 99 İsmi" />
       <FlatList
         data={filteredNames}
         keyExtractor={(item) => item.id}
@@ -171,15 +174,12 @@ export default function NamesOfAllahScreen() {
         ListHeaderComponent={
           <>
             <View style={styles.hero}>
-              <View style={styles.heroTop}>
+              <View style={styles.heroTitleRow}>
                 <View style={styles.heroIcon}>
-                  <Ionicons name="sparkles" size={30} color={colors.gold} />
+                  <Ionicons name="sparkles" size={26} color={colors.gold} />
                 </View>
-                <View style={styles.countBadge}>
-                  <Text style={styles.countText}>99 isim</Text>
-                </View>
+                <Text style={styles.title}>Esmaül Hüsna</Text>
               </View>
-              <Text style={styles.title}>Esmaül Hüsna</Text>
             </View>
 
             <View style={styles.searchWrap}>
@@ -222,9 +222,8 @@ export default function NamesOfAllahScreen() {
             }}
           />
           {previewItem ? (
-            <Pressable accessibilityRole="button" accessibilityLabel="Paylaş" onPress={() => shareNameCard(previewItem)} style={styles.previewShareButton}>
+            <Pressable accessibilityRole="button" accessibilityLabel="Paylaş" onPress={() => shareNameCard(previewItem)} style={[styles.previewShareButton, { bottom: Math.max(insets.bottom + 86, 104) }]}>
               <Ionicons name={sharingId === previewItem.id ? "hourglass-outline" : "share-social"} size={22} color={colors.emerald} />
-              <Text style={styles.previewShareText}>Paylaş</Text>
             </Pressable>
           ) : null}
         </View>
@@ -245,39 +244,24 @@ const styles = StyleSheet.create({
     backgroundColor: colors.emerald,
     overflow: "hidden"
   },
-  heroTop: {
+  heroTitleRow: {
     flexDirection: "row",
     alignItems: "center",
-    justifyContent: "space-between",
+    justifyContent: "center",
     gap: 12
   },
   heroIcon: {
-    width: 54,
-    height: 54,
+    width: 48,
+    height: 48,
     borderRadius: radii.round,
     alignItems: "center",
     justifyContent: "center",
     backgroundColor: "rgba(255,255,255,0.12)"
   },
-  countBadge: {
-    minHeight: 34,
-    borderRadius: radii.round,
-    paddingHorizontal: 13,
-    alignItems: "center",
-    justifyContent: "center",
-    backgroundColor: "rgba(255,255,255,0.14)",
-    borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.18)"
-  },
-  countText: {
-    color: colors.white,
-    fontWeight: "900"
-  },
   title: {
-    marginTop: 14,
     fontFamily: typography.title,
-    fontSize: 34,
-    lineHeight: 40,
+    fontSize: 31,
+    lineHeight: 37,
     fontWeight: "900",
     color: colors.white
   },
@@ -306,6 +290,7 @@ const styles = StyleSheet.create({
     gap: 16
   },
   nameCardWrap: {
+    position: "relative",
     borderRadius: 22,
     overflow: "hidden",
     shadowColor: colors.ink,
@@ -316,7 +301,13 @@ const styles = StyleSheet.create({
   },
   imageFrame: {
     position: "relative",
+    direction: "ltr",
     backgroundColor: colors.paper
+  },
+  openImageButton: {
+    position: "absolute",
+    inset: 0,
+    zIndex: 2
   },
   nameImage: {
     width: "100%",
@@ -387,9 +378,6 @@ const styles = StyleSheet.create({
     opacity: 0.72
   },
   shareButton: {
-    position: "absolute",
-    right: 14,
-    bottom: 14,
     width: 46,
     height: 46,
     borderRadius: radii.round,
@@ -397,14 +385,25 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     backgroundColor: "rgba(255,255,255,0.94)",
     borderWidth: 1,
-    borderColor: "rgba(212,175,55,0.5)"
+    borderColor: "rgba(212,175,55,0.5)",
+    elevation: 6
   },
-  disabledShareButton: {
-    backgroundColor: "rgba(255,255,255,0.78)",
-    borderColor: colors.line
+  shareButtonDock: {
+    position: "absolute",
+    left: 0,
+    right: 0,
+    bottom: 0,
+    zIndex: 5,
+    height: 82,
+    direction: "ltr",
+    alignItems: "flex-end",
+    justifyContent: "flex-end",
+    paddingRight: 18,
+    paddingBottom: 18
   },
   previewBackdrop: {
     flex: 1,
+    direction: "ltr",
     backgroundColor: "rgba(2,18,14,0.96)"
   },
   previewCounter: {
@@ -445,20 +444,17 @@ const styles = StyleSheet.create({
   },
   previewShareButton: {
     position: "absolute",
-    left: 24,
-    right: 24,
-    bottom: 26,
-    minHeight: 52,
+    left: 22,
+    width: 58,
+    height: 58,
     borderRadius: radii.round,
     backgroundColor: "rgba(255,255,255,0.96)",
-    flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
-    gap: 8
-  },
-  previewShareText: {
-    color: colors.emerald,
-    fontSize: 15,
-    fontWeight: "900"
+    shadowColor: "#000",
+    shadowOpacity: 0.22,
+    shadowRadius: 18,
+    shadowOffset: { width: 0, height: 10 },
+    elevation: 6
   }
 });
