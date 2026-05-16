@@ -1,6 +1,6 @@
 {
   "name": "huzur",
-  "version": "1.0.58",
+  "version": "1.0.59",
   "private": true,
   "main": "expo-router/entry",
   "scripts": {
@@ -23,6 +23,7 @@
     "expo-file-system": "~55.0.19",
     "expo-font": "~55.0.7",
     "expo-haptics": "~55.0.0",
+    "expo-image": "~55.0.10",
     "expo-linear-gradient": "~55.0.0",
     "expo-linking": "~55.0.15",
     "expo-location": "~55.1.9",

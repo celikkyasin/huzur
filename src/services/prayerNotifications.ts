@@ -23,7 +23,7 @@ export type PrayerNotificationPreferences = {
 export const reminderMinuteOptions = [0, 5, 10, 15, 20, 30] as const;
 export const soundModeOptions: Array<{ mode: PrayerNotificationSoundMode; label: string; description: string }> = [
   { mode: "silent", label: "Sessiz", description: "Sadece ekranda bildirim gösterir." },
-  { mode: "default", label: "Standart", description: "Telefonun bildirim sesiyle uyarır." },
+  { mode: "default", label: "Telefon sesi", description: "Telefonun seçili bildirim sesiyle uyarır." },
   { mode: "adhan", label: "Ezan", description: "Vakit girince ezan sesi çalar." }
 ];
 
@@ -102,7 +102,7 @@ async function ensureNotificationChannels() {
   });
 
   await Notifications.setNotificationChannelAsync(DEFAULT_CHANNEL_ID, {
-    name: "Standart Vakit Bildirimleri",
+    name: "Telefon Sesiyle Vakit Bildirimleri",
     importance: Notifications.AndroidImportance.HIGH,
     sound: "default",
     vibrationPattern: [0, 300, 180, 300],

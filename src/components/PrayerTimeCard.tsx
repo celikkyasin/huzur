@@ -57,9 +57,9 @@ export function PrayerTimeCard({ locationLabel, prayerTimes, isLocating, isLoadi
               <Ionicons name="calendar" size={15} color={colors.goldSoft} />
             </View>
             <View style={styles.infoTextWrap}>
-              <Text style={styles.infoLabel}>Bugün / Miladi</Text>
+              <Text style={styles.infoLabel}>Bugün</Text>
               <Text style={styles.infoValue} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.82}>
-                {prayerState.displayDate}
+                Miladi {prayerState.displayDate}
               </Text>
             </View>
           </View>

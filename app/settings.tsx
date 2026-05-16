@@ -1,6 +1,5 @@
 import { useEffect, useState } from "react";
-import { Alert, Linking, Pressable, StyleSheet, Switch, Text, View } from "react-native";
-import AsyncStorage from "@react-native-async-storage/async-storage";
+import { Alert, Linking, Pressable, StyleSheet, Switch, Text, View, type GestureResponderEvent } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import { AppHeader } from "@/components/AppHeader";
@@ -12,7 +11,6 @@ import { SectionTitle } from "@/components/ui/SectionTitle";
 import {
   getPrayerNotificationPreferences,
   getPrayerNotificationsEnabled,
-  reminderMinuteOptions,
   setPrayerNotificationPreferences,
   setPrayerNotificationsEnabled,
   soundModeOptions,
@@ -23,17 +21,11 @@ import { usePrayerTimesStore } from "@/store/prayerTimesStore";
 import { colors, radii, shadows, typography } from "@/theme";
 import type { SettingsItem } from "@/types";
 
-const THEME_STORAGE_KEY = "huzur.settings.theme";
-const LANGUAGE_STORAGE_KEY = "huzur.settings.language";
-const APP_VERSION = "1.0.58";
+const APP_VERSION = "1.0.59";
+const MAX_REMINDER_MINUTES = 30;
+const REMINDER_STEP_MINUTES = 5;
 
-type ThemeMode = "Aydınlık" | "Koyu";
-type LanguageMode = "Türkçe" | "English";
-
-const preferenceItems: SettingsItem[] = [
-  { id: "prayer", title: "Namaz Vakti Bildirimleri", subtitle: "Ezan sesi ve vakit hatırlatmaları", icon: "notifications" },
-  { id: "theme", title: "Tema", subtitle: "Görünüm tercihi", icon: "color-palette" }
-];
+const preferenceItems: SettingsItem[] = [{ id: "prayer", title: "Namaz Vakti Bildirimleri", subtitle: "Dakika ve ses tercihini düzenle", icon: "notifications" }];
 
 const supportItems: SettingsItem[] = [
   { id: "about", title: "Uygulama Hakkında", subtitle: `Sürüm ${APP_VERSION}`, icon: "information-circle" },
@@ -44,23 +36,13 @@ export default function SettingsScreen() {
   const [notificationsEnabled, setNotificationsEnabled] = useState(false);
   const [isUpdatingNotifications, setIsUpdatingNotifications] = useState(false);
   const [notificationPreferences, setNotificationPreferences] = useState<PrayerNotificationPreferences>({ reminderMinutes: 15, soundMode: "default" });
-  const [themeMode, setThemeMode] = useState<ThemeMode>("Aydınlık");
-  const [languageMode, setLanguageMode] = useState<LanguageMode>("Türkçe");
+  const [reminderTrackWidth, setReminderTrackWidth] = useState(1);
   const prayerTimes = usePrayerTimesStore((state) => state.times);
+  const reminderRatio = notificationPreferences.reminderMinutes / MAX_REMINDER_MINUTES;
 
   useEffect(() => {
     getPrayerNotificationsEnabled().then(setNotificationsEnabled);
     getPrayerNotificationPreferences().then(setNotificationPreferences);
-    AsyncStorage.getItem(THEME_STORAGE_KEY).then((value) => {
-      if (value === "Aydınlık" || value === "Koyu") {
-        setThemeMode(value);
-      }
-    });
-    AsyncStorage.getItem(LANGUAGE_STORAGE_KEY).then((value) => {
-      if (value === "Türkçe" || value === "English") {
-        setLanguageMode(value);
-      }
-    });
   }, []);
 
   const showProfileActions = () => {
@@ -73,7 +55,6 @@ export default function SettingsScreen() {
     }
 
     setIsUpdatingNotifications(true);
-
     try {
       const result = await setPrayerNotificationsEnabled(nextValue, prayerTimes, notificationPreferences);
       setNotificationsEnabled(result.enabled);
@@ -106,28 +87,13 @@ export default function SettingsScreen() {
     }
   };
 
-  const setLanguage = async (language: LanguageMode) => {
-    setLanguageMode(language);
-    await AsyncStorage.setItem(LANGUAGE_STORAGE_KEY, language);
-    Alert.alert("Dil güncellendi", language === "English" ? "English selected. Full app translation will be completed with the language system update." : "Uygulama dili Türkçe olarak ayarlandı.");
-  };
-
-  const toggleTheme = async () => {
-    const nextTheme: ThemeMode = themeMode === "Aydınlık" ? "Koyu" : "Aydınlık";
-    setThemeMode(nextTheme);
-    await AsyncStorage.setItem(THEME_STORAGE_KEY, nextTheme);
-    Alert.alert("Tema güncellendi", `${nextTheme} tema tercihiniz kaydedildi.`);
-  };
-
   const showAbout = () => {
     Alert.alert("Huzur Hakkında", `Huzur; namaz vakitleri, Kur'an-ı Kerim, dualar, zikir ve günlük manevi alışkanlıklar için hazırlanmış sakin bir İslami yaşam uygulamasıdır.\n\nSürüm: ${APP_VERSION}`);
   };
 
   const openContact = async () => {
     const url = "mailto:destek@huzur.app?subject=Huzur%20Destek";
-    const canOpen = await Linking.canOpenURL(url);
-
-    if (canOpen) {
+    if (await Linking.canOpenURL(url)) {
       await Linking.openURL(url);
       return;
     }
@@ -144,16 +110,26 @@ export default function SettingsScreen() {
       void toggleNotifications();
       return;
     }
-    if (id === "theme") {
-      void toggleTheme();
-      return;
-    }
     if (id === "about") {
       showAbout();
       return;
     }
     if (id === "contact") {
       void openContact();
+    }
+  };
+
+  const updateReminderFromGesture = (event: GestureResponderEvent) => {
+    const ratio = Math.max(0, Math.min(1, event.nativeEvent.locationX / Math.max(1, reminderTrackWidth)));
+    const nextMinutes = Math.round((ratio * MAX_REMINDER_MINUTES) / REMINDER_STEP_MINUTES) * REMINDER_STEP_MINUTES;
+    void updateNotificationPreferences({ reminderMinutes: nextMinutes });
+  };
+
+  const openSystemNotificationSettings = async () => {
+    try {
+      await Linking.openSettings();
+    } catch {
+      Alert.alert("Ayarlar açılamadı", "Telefon ayarlarından Huzur > Bildirimler bölümüne girerek standart bildirim sesini değiştirebilirsiniz.");
     }
   };
 
@@ -168,20 +144,11 @@ export default function SettingsScreen() {
     />
   );
 
-  const ThemeBadge = () => (
-    <View style={styles.compactBadge}>
-      <Ionicons name={themeMode === "Aydınlık" ? "sunny" : "moon"} size={15} color={colors.emerald} />
-      <Text numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.82} style={styles.compactBadgeText}>
-        {themeMode}
-      </Text>
-    </View>
-  );
-
   const NotificationPreferencesPanel = () => (
     <Card style={styles.notificationPanel}>
       <View style={styles.notificationHeader}>
         <View style={styles.notificationIcon}>
-          <Ionicons name="notifications" size={20} color={colors.emerald} />
+          <Ionicons name="notifications" size={21} color={colors.emerald} />
         </View>
         <View style={styles.notificationCopy}>
           <Text style={styles.notificationTitle}>Namaz vakti uyarıları</Text>
@@ -189,22 +156,27 @@ export default function SettingsScreen() {
         </View>
       </View>
 
-      <Text style={styles.preferenceLabel}>Ne kadar önce haber versin?</Text>
-      <View style={styles.preferenceGrid}>
-        {reminderMinuteOptions.map((minutes) => {
-          const selected = notificationPreferences.reminderMinutes === minutes;
-          return (
-            <Pressable
-              key={minutes}
-              accessibilityRole="button"
-              disabled={isUpdatingNotifications}
-              onPress={() => void updateNotificationPreferences({ reminderMinutes: minutes })}
-              style={[styles.preferencePill, selected && styles.preferencePillSelected]}
-            >
-              <Text style={[styles.preferencePillText, selected && styles.preferencePillTextSelected]}>{minutes === 0 ? "Vakit girince" : `${minutes} dk`}</Text>
-            </Pressable>
-          );
-        })}
+      <View style={styles.preferenceTitleRow}>
+        <Text style={styles.preferenceLabel}>Ne kadar önce haber versin?</Text>
+        <Text style={styles.preferenceValue}>{notificationPreferences.reminderMinutes === 0 ? "Vakit girince" : `${notificationPreferences.reminderMinutes} dk önce`}</Text>
+      </View>
+
+      <View
+        accessibilityRole="adjustable"
+        onLayout={(event) => setReminderTrackWidth(event.nativeEvent.layout.width)}
+        onResponderGrant={updateReminderFromGesture}
+        onResponderMove={updateReminderFromGesture}
+        onStartShouldSetResponder={() => true}
+        style={styles.reminderSlider}
+      >
+        <View style={styles.reminderTrack} />
+        <View style={[styles.reminderFill, { width: `${reminderRatio * 100}%` }]} />
+        <View style={[styles.reminderThumb, { left: `${reminderRatio * 100}%` }]} />
+      </View>
+      <View style={styles.sliderLabels}>
+        <Text style={styles.sliderLabel}>0 dk</Text>
+        <Text style={styles.sliderLabel}>15 dk</Text>
+        <Text style={styles.sliderLabel}>30 dk</Text>
       </View>
 
       <Text style={styles.preferenceLabel}>Bildirim sesi</Text>
@@ -236,6 +208,11 @@ export default function SettingsScreen() {
           );
         })}
       </View>
+
+      <Pressable accessibilityRole="button" onPress={openSystemNotificationSettings} style={({ pressed }) => [styles.systemSoundButton, pressed && styles.pressed]}>
+        <Ionicons name="settings" size={17} color={colors.emerald} />
+        <Text style={styles.systemSoundText}>Telefonun standart bildirim sesini seç</Text>
+      </Pressable>
     </Card>
   );
 
@@ -249,7 +226,7 @@ export default function SettingsScreen() {
         </View>
         <View style={styles.heroCopy}>
           <Text style={styles.title}>Ayarlar</Text>
-          <Text style={styles.subtitle}>Bildirim, dil, görünüm ve destek tercihlerinizi düzenleyin.</Text>
+          <Text style={styles.subtitle}>Bildirim ve destek tercihlerinizi düzenleyin.</Text>
         </View>
       </LinearGradient>
 
@@ -273,33 +250,9 @@ export default function SettingsScreen() {
         </View>
       </Pressable>
 
-      <SectionTitle title="Dil Seçimi" />
-      <Card style={styles.languageCard}>
-        <View style={styles.languageHeader}>
-          <View style={styles.languageIcon}>
-            <Ionicons name="globe" size={21} color={colors.emerald} />
-          </View>
-          <View style={styles.languageCopy}>
-            <Text style={styles.languageTitle}>Uygulama dili</Text>
-            <Text style={styles.languageSubtitle}>Dil tercihinizi buradan seçin.</Text>
-          </View>
-        </View>
-        <View style={styles.segmentedControl}>
-          {(["Türkçe", "English"] as LanguageMode[]).map((language) => {
-            const selected = languageMode === language;
-            return (
-              <Pressable key={language} accessibilityRole="button" onPress={() => void setLanguage(language)} style={[styles.languageOption, selected && styles.languageOptionSelected]}>
-                <Text style={[styles.languageOptionText, selected && styles.languageOptionTextSelected]}>{language}</Text>
-              </Pressable>
-            );
-          })}
-        </View>
-      </Card>
-
       <SectionTitle title="Tercihler" />
       <Card style={styles.rows}>
-        <SettingsRow item={preferenceItems[0]} onPress={() => handleSettingPress("prayer")} showChevron={false} rightElement={<NotificationSwitch />} />
-        <SettingsRow item={preferenceItems[1]} isLast onPress={() => handleSettingPress("theme")} showChevron={false} rightElement={<ThemeBadge />} />
+        <SettingsRow item={preferenceItems[0]} isLast onPress={() => handleSettingPress("prayer")} showChevron={false} rightElement={<NotificationSwitch />} />
       </Card>
       <NotificationPreferencesPanel />
 
@@ -423,71 +376,12 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: "900"
   },
-  languageCard: {
-    gap: 14
-  },
-  languageHeader: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 12
-  },
-  languageIcon: {
-    width: 44,
-    height: 44,
-    borderRadius: radii.round,
-    backgroundColor: colors.emeraldSoft,
-    alignItems: "center",
-    justifyContent: "center"
-  },
-  languageCopy: {
-    flex: 1,
-    minWidth: 0
-  },
-  languageTitle: {
-    color: colors.ink,
-    fontSize: 15,
-    fontWeight: "900"
-  },
-  languageSubtitle: {
-    color: colors.muted,
-    fontSize: 12,
-    lineHeight: 17,
-    marginTop: 3,
-    fontWeight: "700"
-  },
-  segmentedControl: {
-    minHeight: 50,
-    borderRadius: radii.round,
-    backgroundColor: colors.cream,
-    flexDirection: "row",
-    padding: 5,
-    gap: 5
-  },
-  languageOption: {
-    flex: 1,
-    minHeight: 40,
-    borderRadius: radii.round,
-    alignItems: "center",
-    justifyContent: "center",
-    paddingHorizontal: 10
-  },
-  languageOptionSelected: {
-    backgroundColor: colors.emerald
-  },
-  languageOptionText: {
-    color: colors.muted,
-    fontSize: 13,
-    fontWeight: "900"
-  },
-  languageOptionTextSelected: {
-    color: colors.white
-  },
   rows: {
     paddingVertical: 2
   },
   notificationPanel: {
     marginTop: 12,
-    gap: 13
+    gap: 14
   },
   notificationHeader: {
     flexDirection: "row",
@@ -495,8 +389,8 @@ const styles = StyleSheet.create({
     alignItems: "flex-start"
   },
   notificationIcon: {
-    width: 42,
-    height: 42,
+    width: 44,
+    height: 44,
     borderRadius: radii.round,
     backgroundColor: colors.emeraldSoft,
     alignItems: "center",
@@ -508,7 +402,7 @@ const styles = StyleSheet.create({
   },
   notificationTitle: {
     color: colors.ink,
-    fontSize: 15,
+    fontSize: 16,
     fontWeight: "900"
   },
   notificationSubtitle: {
@@ -518,39 +412,60 @@ const styles = StyleSheet.create({
     marginTop: 4,
     fontWeight: "700"
   },
+  preferenceTitleRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: 12
+  },
   preferenceLabel: {
     color: colors.ink,
     fontSize: 13,
-    fontWeight: "900",
-    marginTop: 2
-  },
-  preferenceGrid: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    gap: 8
-  },
-  preferencePill: {
-    minHeight: 38,
-    minWidth: 74,
-    borderRadius: radii.round,
-    backgroundColor: colors.cream,
-    borderWidth: 1,
-    borderColor: colors.line,
-    alignItems: "center",
-    justifyContent: "center",
-    paddingHorizontal: 12
-  },
-  preferencePillSelected: {
-    backgroundColor: colors.emerald,
-    borderColor: colors.emerald
-  },
-  preferencePillText: {
-    color: colors.muted,
-    fontSize: 12,
     fontWeight: "900"
   },
-  preferencePillTextSelected: {
-    color: colors.white
+  preferenceValue: {
+    color: colors.emerald,
+    fontSize: 13,
+    fontWeight: "900"
+  },
+  reminderSlider: {
+    height: 34,
+    justifyContent: "center"
+  },
+  reminderTrack: {
+    height: 8,
+    borderRadius: 8,
+    backgroundColor: colors.cream,
+    borderWidth: 1,
+    borderColor: colors.line
+  },
+  reminderFill: {
+    position: "absolute",
+    left: 0,
+    height: 8,
+    borderRadius: 8,
+    backgroundColor: colors.emerald
+  },
+  reminderThumb: {
+    position: "absolute",
+    width: 24,
+    height: 24,
+    marginLeft: -12,
+    borderRadius: 12,
+    backgroundColor: colors.white,
+    borderWidth: 5,
+    borderColor: colors.emerald,
+    ...shadows.soft
+  },
+  sliderLabels: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    marginTop: -8
+  },
+  sliderLabel: {
+    color: colors.muted,
+    fontSize: 11,
+    fontWeight: "800"
   },
   soundGrid: {
     gap: 9
@@ -593,6 +508,23 @@ const styles = StyleSheet.create({
   soundDescriptionSelected: {
     color: "rgba(255,255,255,0.76)"
   },
+  systemSoundButton: {
+    minHeight: 44,
+    borderRadius: radii.round,
+    borderWidth: 1,
+    borderColor: "rgba(7,94,71,0.18)",
+    backgroundColor: colors.white,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+    paddingHorizontal: 14
+  },
+  systemSoundText: {
+    color: colors.emerald,
+    fontSize: 12,
+    fontWeight: "900"
+  },
   premium: {
     marginTop: 18,
     gap: 12
@@ -627,23 +559,5 @@ const styles = StyleSheet.create({
   },
   pressed: {
     opacity: 0.72
-  },
-  compactBadge: {
-    maxWidth: 96,
-    minWidth: 74,
-    height: 34,
-    borderRadius: radii.round,
-    backgroundColor: colors.emeraldSoft,
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 5,
-    paddingHorizontal: 10
-  },
-  compactBadgeText: {
-    flexShrink: 1,
-    color: colors.emerald,
-    fontSize: 12,
-    fontWeight: "900"
   }
 });

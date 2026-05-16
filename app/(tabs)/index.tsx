@@ -25,6 +25,7 @@ const quickActions = [
   { title: "Camiler", icon: "business" as const, route: "/mosques" as const },
   { title: "Cuma Mesajları", icon: "sparkles" as const, route: "/friday-messages" as const }
 ];
+const WEATHER_REFRESH_MS = 60 * 60 * 1000;
 
 export default function HomeScreen() {
   const ayahShotRef = useRef<ViewShot | null>(null);
@@ -60,16 +61,41 @@ export default function HomeScreen() {
     }
 
     let isActive = true;
-    void fetchCurrentWeather(latitude, longitude).then((result) => {
+    const updateWeather = () => {
+      void fetchCurrentWeather(latitude, longitude).then((result) => {
+        if (isActive) {
+          setWeather(result);
+        }
+      });
+    };
+
+    updateWeather();
+    const interval = setInterval(updateWeather, WEATHER_REFRESH_MS);
+
+    return () => {
+      isActive = false;
+      clearInterval(interval);
+    };
+  }, [latitude, longitude]);
+
+  useFocusEffect(
+    useCallback(() => {
+      if (typeof latitude !== "number" || typeof longitude !== "number") {
+        return undefined;
+      }
+
+      let isActive = true;
+      void fetchCurrentWeather(latitude, longitude).then((result) => {
       if (isActive) {
         setWeather(result);
       }
-    });
+      });
 
     return () => {
       isActive = false;
     };
-  }, [latitude, longitude]);
+    }, [latitude, longitude])
+  );
 
   useFocusEffect(
     useCallback(() => {

@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
-import { Alert, FlatList, Image, Pressable, StyleSheet, Text, TextInput, View } from "react-native";
+import { Alert, FlatList, Pressable, StyleSheet, Text, TextInput, View } from "react-native";
+import { Image } from "expo-image";
 import * as FileSystem from "expo-file-system/legacy";
 import * as Sharing from "expo-sharing";
 import { Ionicons } from "@expo/vector-icons";
@@ -30,6 +31,8 @@ export default function NamesOfAllahScreen() {
   const [query, setQuery] = useState("");
   const [sharingId, setSharingId] = useState<string | null>(null);
   const [items, setItems] = useState<AllahName[]>(namesOfAllah);
+  const [loadingImages, setLoadingImages] = useState<Record<string, boolean>>({});
+  const [failedImages, setFailedImages] = useState<Record<string, boolean>>({});
   const filteredNames = useMemo(() => {
     const term = query.trim().toLocaleLowerCase("tr-TR");
     if (!term) {
@@ -43,8 +46,17 @@ export default function NamesOfAllahScreen() {
     let isMounted = true;
 
     fetchRemoteNameImages(namesOfAllah).then((remoteItems) => {
-      if (isMounted) {
-        setItems(remoteItems);
+      if (!isMounted) {
+        return;
+      }
+
+      setItems(remoteItems);
+      const imageUrls = remoteItems.map((item) => item.imageUrl).filter((url): url is string => Boolean(url));
+      const nextLoadingState = Object.fromEntries(remoteItems.filter((item) => item.imageUrl).map((item) => [item.id, true]));
+      setLoadingImages(nextLoadingState);
+
+      if (imageUrls.length > 0) {
+        void Image.prefetch(imageUrls, "disk");
       }
     });
 
@@ -103,17 +115,40 @@ export default function NamesOfAllahScreen() {
         contentContainerStyle={styles.list}
         renderItem={({ item }) => {
           const hasImage = Boolean(item.imageUrl);
+          const imageFailed = failedImages[item.id];
+          const imageLoading = loadingImages[item.id] ?? false;
+
           return (
             <View style={styles.nameCardWrap}>
-              {hasImage ? (
-                <Image source={{ uri: item.imageUrl }} style={[styles.nameImage, { aspectRatio: item.aspectRatio || 9 / 16 }]} resizeMode="cover" />
+              {hasImage && !imageFailed ? (
+                <View>
+                  {imageLoading ? (
+                    <View style={[styles.imageLoading, { aspectRatio: item.aspectRatio || 9 / 16 }]}>
+                      <Ionicons name="sparkles" size={28} color={colors.gold} />
+                      <Text style={styles.imageLoadingText}>Görsel hazırlanıyor</Text>
+                    </View>
+                  ) : null}
+                  <Image
+                    source={{ uri: item.imageUrl }}
+                    style={[styles.nameImage, { aspectRatio: item.aspectRatio || 9 / 16 }, imageLoading && styles.hiddenImage]}
+                    contentFit="cover"
+                    cachePolicy="disk"
+                    priority="high"
+                    transition={180}
+                    onLoadEnd={() => setLoadingImages((current) => ({ ...current, [item.id]: false }))}
+                    onError={() => {
+                      setLoadingImages((current) => ({ ...current, [item.id]: false }));
+                      setFailedImages((current) => ({ ...current, [item.id]: true }));
+                    }}
+                  />
+                </View>
               ) : (
                 <Card style={styles.placeholderCard}>
                   <View style={styles.placeholderHeader}>
                     <View style={styles.number}>
                       <Text style={styles.numberText}>{item.order}</Text>
                     </View>
-                    <Text style={styles.placeholderStatus}>Premium görsel bekleniyor</Text>
+                    <Text style={styles.placeholderStatus}>{imageFailed ? "Görsel yüklenemedi" : "Premium görsel bekleniyor"}</Text>
                   </View>
                   <Text style={styles.arabic}>{item.arabic}</Text>
                   <Text style={styles.name}>{item.transliteration}</Text>
@@ -215,7 +250,24 @@ const styles = StyleSheet.create({
   nameImage: {
     width: "100%",
     minHeight: 520,
-    backgroundColor: colors.emerald
+    backgroundColor: colors.paper
+  },
+  hiddenImage: {
+    position: "absolute",
+    opacity: 0
+  },
+  imageLoading: {
+    width: "100%",
+    minHeight: 520,
+    backgroundColor: colors.paper,
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 10
+  },
+  imageLoadingText: {
+    color: colors.emerald,
+    fontSize: 13,
+    fontWeight: "900"
   },
   placeholderCard: {
     minHeight: 250,
