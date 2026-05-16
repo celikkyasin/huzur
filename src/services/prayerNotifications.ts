@@ -24,7 +24,7 @@ export const MIN_REMINDER_MINUTES = 0;
 export const MAX_REMINDER_MINUTES = 30;
 export const soundModeOptions: Array<{ mode: PrayerNotificationSoundMode; label: string; description: string }> = [
   { mode: "silent", label: "Sessiz", description: "Sadece ekranda bildirim gösterir." },
-  { mode: "default", label: "Huzur sesi", description: "Huzur bildirim kanalındaki seçili sesle uyarır." },
+  { mode: "default", label: "Kısa uyarı", description: "Ezan çalmadan kısa bildirim tonu verir." },
   { mode: "adhan", label: "Ezan", description: "Vakit girince ezan sesi çalar." }
 ];
 
@@ -106,7 +106,7 @@ async function ensureNotificationChannels() {
   });
 
   await Notifications.setNotificationChannelAsync(DEFAULT_CHANNEL_ID, {
-    name: "Telefon Sesiyle Vakit Bildirimleri",
+    name: "Kısa Vakit Bildirimleri",
     importance: Notifications.AndroidImportance.HIGH,
     sound: "default",
     vibrationPattern: [0, 300, 180, 300],

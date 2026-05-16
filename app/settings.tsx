@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Alert, Linking, Platform, Pressable, StyleSheet, Switch, Text, View, type GestureResponderEvent } from "react-native";
+import { Linking, Modal, Pressable, StyleSheet, Switch, Text, TextInput, View, type GestureResponderEvent } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import { AppHeader } from "@/components/AppHeader";
@@ -22,7 +22,16 @@ import { usePrayerTimesStore } from "@/store/prayerTimesStore";
 import { colors, radii, shadows, typography } from "@/theme";
 import type { SettingsItem } from "@/types";
 
-const APP_VERSION = "1.0.61";
+const APP_VERSION = "1.0.62";
+const SUPPORT_EMAIL = "celikkyasin@gmail.com";
+
+type FeedbackModalState = {
+  visible: boolean;
+  tone: "success" | "warning" | "info";
+  icon: keyof typeof Ionicons.glyphMap;
+  title: string;
+  message: string;
+};
 
 const preferenceItems: SettingsItem[] = [{ id: "prayer", title: "Namaz Vakti Bildirimleri", subtitle: "Dakika ve ses tercihini düzenle", icon: "notifications" }];
 
@@ -35,17 +44,42 @@ export default function SettingsScreen() {
   const [notificationsEnabled, setNotificationsEnabled] = useState(false);
   const [isUpdatingNotifications, setIsUpdatingNotifications] = useState(false);
   const [notificationPreferences, setNotificationPreferences] = useState<PrayerNotificationPreferences>({ reminderMinutes: 15, soundMode: "default" });
+  const [selectedReminderMinutes, setSelectedReminderMinutes] = useState(15);
   const [reminderTrackWidth, setReminderTrackWidth] = useState(1);
+  const [feedbackModal, setFeedbackModal] = useState<FeedbackModalState>({
+    visible: false,
+    tone: "info",
+    icon: "information-circle",
+    title: "",
+    message: ""
+  });
+  const [aboutVisible, setAboutVisible] = useState(false);
   const prayerTimes = usePrayerTimesStore((state) => state.times);
-  const reminderRatio = notificationPreferences.reminderMinutes / MAX_REMINDER_MINUTES;
+  const reminderRatio = selectedReminderMinutes / MAX_REMINDER_MINUTES;
 
   useEffect(() => {
     getPrayerNotificationsEnabled().then(setNotificationsEnabled);
-    getPrayerNotificationPreferences().then(setNotificationPreferences);
+    getPrayerNotificationPreferences().then((preferences) => {
+      setNotificationPreferences(preferences);
+      setSelectedReminderMinutes(preferences.reminderMinutes);
+    });
   }, []);
 
+  const showFeedback = (modal: Omit<FeedbackModalState, "visible">) => {
+    setFeedbackModal({ ...modal, visible: true });
+  };
+
+  const closeFeedback = () => {
+    setFeedbackModal((current) => ({ ...current, visible: false }));
+  };
+
   const showProfileActions = () => {
-    Alert.alert("Profil", "Profil ayarları hesap sistemiyle birlikte açılacak. Bu kart konum yenileme veya izin işlemi başlatmaz.", [{ text: "Tamam" }]);
+    showFeedback({
+      tone: "info",
+      icon: "person-circle",
+      title: "Profil yakında",
+      message: "Profil ayarları hesap sistemiyle birlikte açılacak. Bu alan konum yenileme veya izin işlemi başlatmaz."
+    });
   };
 
   const toggleNotifications = async (nextValue = !notificationsEnabled) => {
@@ -59,12 +93,27 @@ export default function SettingsScreen() {
       setNotificationsEnabled(result.enabled);
 
       if (!result.permissionGranted) {
-        Alert.alert("Bildirim izni gerekli", "Vakit hatırlatmaları için bildirim izni vermeniz gerekir.");
+        showFeedback({
+          tone: "warning",
+          icon: "notifications-off",
+          title: "Bildirim izni gerekli",
+          message: "Namaz vakti hatırlatmalarını kullanmak için Huzur bildirimlerine izin vermen gerekiyor."
+        });
       } else {
-        Alert.alert(result.enabled ? "Bildirimler açıldı" : "Bildirimler kapatıldı", result.enabled ? "Namaz vakti hatırlatmaları hazır." : "Namaz vakti hatırlatmaları kapatıldı.");
+        showFeedback({
+          tone: result.enabled ? "success" : "info",
+          icon: result.enabled ? "checkmark-circle" : "moon",
+          title: result.enabled ? "Hatırlatmalar açıldı" : "Hatırlatmalar kapatıldı",
+          message: result.enabled ? `${notificationPreferences.reminderMinutes} dakika önce uyarı hazır. Ses tercihin: ${soundModeOptions.find((option) => option.mode === notificationPreferences.soundMode)?.label ?? "Kısa uyarı"}.` : "Namaz vakti hatırlatmaları kapatıldı."
+        });
       }
     } catch {
-      Alert.alert("Bildirim ayarlanamadı", "Şu anda bildirim tercihi kaydedilemedi. Lütfen tekrar deneyin.");
+      showFeedback({
+        tone: "warning",
+        icon: "alert-circle",
+        title: "Bildirim ayarlanamadı",
+        message: "Şu anda bildirim tercihi kaydedilemedi. Lütfen tekrar deneyin."
+      });
     } finally {
       setIsUpdatingNotifications(false);
     }
@@ -79,29 +128,41 @@ export default function SettingsScreen() {
     try {
       const nextPreferences = await setPrayerNotificationPreferences(preferences, prayerTimes);
       setNotificationPreferences(nextPreferences);
+      setSelectedReminderMinutes(nextPreferences.reminderMinutes);
     } catch {
-      Alert.alert("Bildirim ayarlanamadı", "Bildirim tercihi şu anda kaydedilemedi. Lütfen tekrar deneyin.");
+      showFeedback({
+        tone: "warning",
+        icon: "alert-circle",
+        title: "Tercih kaydedilemedi",
+        message: "Bildirim tercihi şu anda kaydedilemedi. Lütfen tekrar deneyin."
+      });
     } finally {
       setIsUpdatingNotifications(false);
     }
   };
 
-  const showAbout = () => {
-    Alert.alert("Huzur Hakkında", `Huzur; namaz vakitleri, Kur'an-ı Kerim, dualar, zikir ve günlük manevi alışkanlıklar için hazırlanmış sakin bir İslami yaşam uygulamasıdır.\n\nSürüm: ${APP_VERSION}`);
-  };
-
   const openContact = async () => {
-    const url = "mailto:destek@huzur.app?subject=Huzur%20Destek";
+    const url = `mailto:${SUPPORT_EMAIL}?subject=Huzur%20Destek`;
     if (await Linking.canOpenURL(url)) {
       await Linking.openURL(url);
       return;
     }
 
-    Alert.alert("İletişim", "Bize destek@huzur.app adresinden ulaşabilirsiniz.");
+    showFeedback({
+      tone: "info",
+      icon: "mail",
+      title: "İletişim",
+      message: `Bize ${SUPPORT_EMAIL} adresinden ulaşabilirsiniz.`
+    });
   };
 
   const showPremium = () => {
-    Alert.alert("Huzur Premium", "Premium özellikler yakında açılacak: özel temalar, gelişmiş hatırlatıcılar ve reklamsız sakin deneyim.");
+    showFeedback({
+      tone: "info",
+      icon: "sparkles",
+      title: "Huzur Premium",
+      message: "Özel temalar, gelişmiş hatırlatıcılar ve reklamsız sakin bir deneyim yakında açılacak."
+    });
   };
 
   const handleSettingPress = (id: string) => {
@@ -110,7 +171,7 @@ export default function SettingsScreen() {
       return;
     }
     if (id === "about") {
-      showAbout();
+      setAboutVisible(true);
       return;
     }
     if (id === "contact") {
@@ -120,23 +181,17 @@ export default function SettingsScreen() {
 
   const updateReminderFromGesture = (event: GestureResponderEvent) => {
     const ratio = Math.max(0, Math.min(1, event.nativeEvent.locationX / Math.max(1, reminderTrackWidth)));
-    const nextMinutes = Math.round(ratio * MAX_REMINDER_MINUTES);
+    setSelectedReminderMinutes(Math.round(ratio * MAX_REMINDER_MINUTES));
+  };
+
+  const commitReminderMinutes = (minutes = selectedReminderMinutes) => {
+    const nextMinutes = Math.max(0, Math.min(MAX_REMINDER_MINUTES, Math.round(minutes)));
+    setSelectedReminderMinutes(nextMinutes);
     void updateNotificationPreferences({ reminderMinutes: nextMinutes });
   };
 
-  const openAppNotificationSettings = async () => {
-    try {
-      if (Platform.OS === "android" && Linking.sendIntent) {
-        await Linking.sendIntent("android.settings.APP_NOTIFICATION_SETTINGS", [
-          { key: "android.provider.extra.APP_PACKAGE", value: "com.huzur.app" }
-        ]);
-        return;
-      }
-
-      await Linking.openSettings();
-    } catch {
-      Alert.alert("Ayarlar açılamadı", "Telefon ayarlarından Huzur > Bildirimler bölümüne girerek sadece Huzur uygulamasının bildirim sesini değiştirebilirsiniz.");
-    }
+  const adjustReminderMinutes = (amount: number) => {
+    commitReminderMinutes(selectedReminderMinutes + amount);
   };
 
   const NotificationSwitch = () => (
@@ -158,13 +213,38 @@ export default function SettingsScreen() {
         </View>
         <View style={styles.notificationCopy}>
           <Text style={styles.notificationTitle}>Namaz vakti uyarıları</Text>
-          <Text style={styles.notificationSubtitle}>Ezan sesi sadece siz seçerseniz çalar. Toplantı ve sessiz ortamlar için standart ya da sessiz modu kullanabilirsiniz.</Text>
+          <Text style={styles.notificationSubtitle}>Dakikayı hassas seçebilir, sesi sadece Huzur hatırlatmaları için belirleyebilirsiniz.</Text>
         </View>
       </View>
 
       <View style={styles.preferenceTitleRow}>
         <Text style={styles.preferenceLabel}>Ne kadar önce haber versin?</Text>
-        <Text style={styles.preferenceValue}>{notificationPreferences.reminderMinutes === 0 ? "Vakit girince" : `${notificationPreferences.reminderMinutes} dk önce`}</Text>
+        <Text style={styles.preferenceValue}>{selectedReminderMinutes === 0 ? "Vakit girince" : `${selectedReminderMinutes} dk önce`}</Text>
+      </View>
+
+      <View style={styles.minutePicker}>
+        <Pressable accessibilityRole="button" disabled={isUpdatingNotifications} onPress={() => adjustReminderMinutes(-1)} style={({ pressed }) => [styles.minuteButton, pressed && styles.pressed]}>
+          <Ionicons name="remove" size={18} color={colors.emerald} />
+        </Pressable>
+        <View style={styles.minuteInputWrap}>
+          <TextInput
+            value={String(selectedReminderMinutes)}
+            keyboardType="number-pad"
+            maxLength={2}
+            onChangeText={(value) => {
+              const number = Number(value.replace(/\D/g, ""));
+              setSelectedReminderMinutes(Number.isFinite(number) ? Math.max(0, Math.min(MAX_REMINDER_MINUTES, number)) : 0);
+            }}
+            onEndEditing={() => commitReminderMinutes()}
+            onSubmitEditing={() => commitReminderMinutes()}
+            selectTextOnFocus
+            style={styles.minuteInput}
+          />
+          <Text style={styles.minuteSuffix}>dk</Text>
+        </View>
+        <Pressable accessibilityRole="button" disabled={isUpdatingNotifications} onPress={() => adjustReminderMinutes(1)} style={({ pressed }) => [styles.minuteButton, pressed && styles.pressed]}>
+          <Ionicons name="add" size={18} color={colors.emerald} />
+        </Pressable>
       </View>
 
       <View
@@ -172,6 +252,7 @@ export default function SettingsScreen() {
         onLayout={(event) => setReminderTrackWidth(event.nativeEvent.layout.width)}
         onResponderGrant={updateReminderFromGesture}
         onResponderMove={updateReminderFromGesture}
+        onResponderRelease={() => commitReminderMinutes()}
         onStartShouldSetResponder={() => true}
         style={styles.reminderSlider}
       >
@@ -191,7 +272,7 @@ export default function SettingsScreen() {
           const selected = notificationPreferences.soundMode === option.mode;
           const iconName: Record<PrayerNotificationSoundMode, keyof typeof Ionicons.glyphMap> = {
             silent: "volume-mute",
-            default: "phone-portrait",
+            default: "notifications",
             adhan: "musical-notes"
           };
 
@@ -215,10 +296,10 @@ export default function SettingsScreen() {
         })}
       </View>
 
-      <Pressable accessibilityRole="button" onPress={openAppNotificationSettings} style={({ pressed }) => [styles.systemSoundButton, pressed && styles.pressed]}>
-        <Ionicons name="settings" size={17} color={colors.emerald} />
-        <Text style={styles.systemSoundText}>Huzur bildirim sesini değiştir</Text>
-      </Pressable>
+      <View style={styles.soundNote}>
+        <Ionicons name="shield-checkmark" size={16} color={colors.emerald} />
+        <Text style={styles.soundNoteText}>Ses tercihi uygulama içinden seçilir; telefonun genel bildirim sesi değiştirilmez.</Text>
+      </View>
     </Card>
   );
 
@@ -279,7 +360,60 @@ export default function SettingsScreen() {
         <Text style={styles.premiumSubtitle}>Özel temalar, gelişmiş hatırlatıcılar ve reklamsız sakin bir deneyim.</Text>
         <PrimaryButton label="Bilgi Al" icon="sparkles" tone="gold" style={styles.premiumButton} onPress={showPremium} />
       </Card>
+
+      <FeedbackModal modal={feedbackModal} onClose={closeFeedback} />
+      <AboutModal visible={aboutVisible} onClose={() => setAboutVisible(false)} version={APP_VERSION} />
     </ScreenContainer>
+  );
+}
+
+function FeedbackModal({ modal, onClose }: { modal: FeedbackModalState; onClose: () => void }) {
+  const toneColor = modal.tone === "warning" ? "#B7791F" : colors.emerald;
+
+  return (
+    <Modal visible={modal.visible} transparent animationType="fade" onRequestClose={onClose}>
+      <View style={styles.modalBackdrop}>
+        <View style={styles.modalCard}>
+          <View style={[styles.modalIcon, { backgroundColor: modal.tone === "warning" ? "#FFF4D8" : colors.emeraldSoft }]}>
+            <Ionicons name={modal.icon} size={30} color={toneColor} />
+          </View>
+          <Text style={styles.modalTitle}>{modal.title}</Text>
+          <Text style={styles.modalMessage}>{modal.message}</Text>
+          <Pressable accessibilityRole="button" onPress={onClose} style={({ pressed }) => [styles.modalButton, pressed && styles.pressed]}>
+            <Text style={styles.modalButtonText}>Tamam</Text>
+          </Pressable>
+        </View>
+      </View>
+    </Modal>
+  );
+}
+
+function AboutModal({ visible, onClose, version }: { visible: boolean; onClose: () => void; version: string }) {
+  return (
+    <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
+      <View style={styles.modalBackdrop}>
+        <View style={styles.aboutCard}>
+          <LinearGradient colors={[colors.emerald, "#0B7A5C"]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.aboutHero}>
+            <View style={styles.aboutLogo}>
+              <Ionicons name="moon" size={30} color={colors.gold} />
+            </View>
+            <Text style={styles.aboutTitle}>Huzur</Text>
+            <Text style={styles.aboutSubtitle}>Namaz vakitleri, Kur'an-ı Kerim, dualar, zikir ve günlük manevi alışkanlıklar için sakin bir İslami yaşam uygulaması.</Text>
+          </LinearGradient>
+          <View style={styles.aboutInfoRow}>
+            <Ionicons name="phone-portrait" size={18} color={colors.emerald} />
+            <Text style={styles.aboutInfoText}>Sürüm {version}</Text>
+          </View>
+          <View style={styles.aboutInfoRow}>
+            <Ionicons name="heart" size={18} color={colors.emerald} />
+            <Text style={styles.aboutInfoText}>Sade, okunaklı ve günlük kullanıma uygun bir deneyim.</Text>
+          </View>
+          <Pressable accessibilityRole="button" onPress={onClose} style={({ pressed }) => [styles.modalButton, pressed && styles.pressed]}>
+            <Text style={styles.modalButtonText}>Kapat</Text>
+          </Pressable>
+        </View>
+      </View>
+    </Modal>
   );
 }
 
@@ -434,32 +568,79 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: "900"
   },
-  reminderSlider: {
-    height: 34,
+  minutePicker: {
+    minHeight: 54,
+    borderRadius: radii.md,
+    backgroundColor: colors.cream,
+    borderWidth: 1,
+    borderColor: colors.line,
+    flexDirection: "row",
+    alignItems: "center",
+    padding: 7,
+    gap: 8
+  },
+  minuteButton: {
+    width: 40,
+    height: 40,
+    borderRadius: radii.round,
+    backgroundColor: colors.white,
+    borderWidth: 1,
+    borderColor: "rgba(7,94,71,0.16)",
+    alignItems: "center",
     justifyContent: "center"
   },
+  minuteInputWrap: {
+    flex: 1,
+    minHeight: 42,
+    borderRadius: radii.round,
+    backgroundColor: colors.white,
+    borderWidth: 1,
+    borderColor: "rgba(7,94,71,0.16)",
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 6
+  },
+  minuteInput: {
+    minWidth: 44,
+    paddingVertical: 0,
+    color: colors.emerald,
+    textAlign: "center",
+    fontSize: 20,
+    fontWeight: "900"
+  },
+  minuteSuffix: {
+    color: colors.muted,
+    fontSize: 13,
+    fontWeight: "900"
+  },
+  reminderSlider: {
+    height: 44,
+    justifyContent: "center",
+    paddingHorizontal: 3
+  },
   reminderTrack: {
-    height: 8,
-    borderRadius: 8,
+    height: 10,
+    borderRadius: 10,
     backgroundColor: colors.cream,
     borderWidth: 1,
     borderColor: colors.line
   },
   reminderFill: {
     position: "absolute",
-    left: 0,
-    height: 8,
-    borderRadius: 8,
+    left: 3,
+    height: 10,
+    borderRadius: 10,
     backgroundColor: colors.emerald
   },
   reminderThumb: {
     position: "absolute",
-    width: 24,
-    height: 24,
+    width: 30,
+    height: 30,
     marginLeft: -12,
-    borderRadius: 12,
+    borderRadius: 15,
     backgroundColor: colors.white,
-    borderWidth: 5,
+    borderWidth: 6,
     borderColor: colors.emerald,
     ...shadows.soft
   },
@@ -514,22 +695,22 @@ const styles = StyleSheet.create({
   soundDescriptionSelected: {
     color: "rgba(255,255,255,0.76)"
   },
-  systemSoundButton: {
+  soundNote: {
     minHeight: 44,
-    borderRadius: radii.round,
-    borderWidth: 1,
-    borderColor: "rgba(7,94,71,0.18)",
-    backgroundColor: colors.white,
+    borderRadius: radii.md,
+    backgroundColor: colors.emeraldSoft,
     flexDirection: "row",
     alignItems: "center",
-    justifyContent: "center",
     gap: 8,
-    paddingHorizontal: 14
+    paddingHorizontal: 12,
+    paddingVertical: 10
   },
-  systemSoundText: {
+  soundNoteText: {
+    flex: 1,
     color: colors.emerald,
     fontSize: 12,
-    fontWeight: "900"
+    lineHeight: 17,
+    fontWeight: "800"
   },
   premium: {
     marginTop: 18,
@@ -562,6 +743,117 @@ const styles = StyleSheet.create({
   },
   premiumButton: {
     marginTop: 2
+  },
+  modalBackdrop: {
+    flex: 1,
+    backgroundColor: "rgba(2,18,14,0.42)",
+    alignItems: "center",
+    justifyContent: "center",
+    padding: 22
+  },
+  modalCard: {
+    width: "100%",
+    maxWidth: 380,
+    borderRadius: 28,
+    backgroundColor: colors.paper,
+    padding: 22,
+    alignItems: "center",
+    borderWidth: 1,
+    borderColor: colors.line,
+    ...shadows.card
+  },
+  modalIcon: {
+    width: 66,
+    height: 66,
+    borderRadius: 33,
+    alignItems: "center",
+    justifyContent: "center"
+  },
+  modalTitle: {
+    marginTop: 14,
+    color: colors.ink,
+    fontFamily: typography.title,
+    fontSize: 22,
+    lineHeight: 27,
+    fontWeight: "900",
+    textAlign: "center"
+  },
+  modalMessage: {
+    marginTop: 8,
+    color: colors.muted,
+    fontSize: 14,
+    lineHeight: 21,
+    fontWeight: "700",
+    textAlign: "center"
+  },
+  modalButton: {
+    marginTop: 18,
+    minHeight: 46,
+    minWidth: 130,
+    borderRadius: radii.round,
+    backgroundColor: colors.emerald,
+    alignItems: "center",
+    justifyContent: "center",
+    paddingHorizontal: 20
+  },
+  modalButtonText: {
+    color: colors.white,
+    fontSize: 14,
+    fontWeight: "900"
+  },
+  aboutCard: {
+    width: "100%",
+    maxWidth: 400,
+    borderRadius: 30,
+    backgroundColor: colors.paper,
+    overflow: "hidden",
+    borderWidth: 1,
+    borderColor: colors.line,
+    ...shadows.card
+  },
+  aboutHero: {
+    padding: 22,
+    alignItems: "center"
+  },
+  aboutLogo: {
+    width: 66,
+    height: 66,
+    borderRadius: 33,
+    backgroundColor: "rgba(255,255,255,0.14)",
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.18)",
+    alignItems: "center",
+    justifyContent: "center"
+  },
+  aboutTitle: {
+    marginTop: 12,
+    color: colors.white,
+    fontFamily: typography.title,
+    fontSize: 30,
+    lineHeight: 36,
+    fontWeight: "900"
+  },
+  aboutSubtitle: {
+    marginTop: 8,
+    color: "rgba(255,255,255,0.78)",
+    fontSize: 13,
+    lineHeight: 20,
+    fontWeight: "700",
+    textAlign: "center"
+  },
+  aboutInfoRow: {
+    marginHorizontal: 18,
+    marginTop: 14,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10
+  },
+  aboutInfoText: {
+    flex: 1,
+    color: colors.ink,
+    fontSize: 13,
+    lineHeight: 19,
+    fontWeight: "800"
   },
   pressed: {
     opacity: 0.72
