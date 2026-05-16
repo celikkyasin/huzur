@@ -121,26 +121,27 @@ export default function NamesOfAllahScreen() {
           return (
             <View style={styles.nameCardWrap}>
               {hasImage && !imageFailed ? (
-                <View>
-                  {imageLoading ? (
-                    <View style={[styles.imageLoading, { aspectRatio: item.aspectRatio || 9 / 16 }]}>
-                      <Ionicons name="sparkles" size={28} color={colors.gold} />
-                      <Text style={styles.imageLoadingText}>Görsel hazırlanıyor</Text>
-                    </View>
-                  ) : null}
+                <View style={styles.imageFrame}>
                   <Image
                     source={{ uri: item.imageUrl }}
-                    style={[styles.nameImage, { aspectRatio: item.aspectRatio || 9 / 16 }, imageLoading && styles.hiddenImage]}
+                    style={[styles.nameImage, { aspectRatio: item.aspectRatio || 9 / 16 }]}
                     contentFit="cover"
                     cachePolicy="disk"
                     priority="high"
                     transition={180}
+                    onLoad={() => setLoadingImages((current) => ({ ...current, [item.id]: false }))}
                     onLoadEnd={() => setLoadingImages((current) => ({ ...current, [item.id]: false }))}
                     onError={() => {
                       setLoadingImages((current) => ({ ...current, [item.id]: false }));
                       setFailedImages((current) => ({ ...current, [item.id]: true }));
                     }}
                   />
+                  {imageLoading ? (
+                    <View style={[styles.imageLoading, { aspectRatio: item.aspectRatio || 9 / 16 }]}>
+                      <Ionicons name="sparkles" size={28} color={colors.gold} />
+                      <Text style={styles.imageLoadingText}>Görsel hazırlanıyor</Text>
+                    </View>
+                  ) : null}
                 </View>
               ) : (
                 <Card style={styles.placeholderCard}>
@@ -247,19 +248,21 @@ const styles = StyleSheet.create({
     shadowRadius: 20,
     elevation: 5
   },
+  imageFrame: {
+    position: "relative",
+    backgroundColor: colors.paper
+  },
   nameImage: {
     width: "100%",
     minHeight: 520,
     backgroundColor: colors.paper
   },
-  hiddenImage: {
-    position: "absolute",
-    opacity: 0
-  },
   imageLoading: {
+    position: "absolute",
+    inset: 0,
     width: "100%",
     minHeight: 520,
-    backgroundColor: colors.paper,
+    backgroundColor: "rgba(255,253,248,0.96)",
     alignItems: "center",
     justifyContent: "center",
     gap: 10

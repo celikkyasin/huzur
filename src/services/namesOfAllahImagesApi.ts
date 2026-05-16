@@ -1,6 +1,7 @@
 import type { AllahName } from "@/data/namesOfAllah";
 
 const API_URL = process.env.EXPO_PUBLIC_REWARDS_API_URL;
+const FALLBACK_API_URL = "https://huzur-six.vercel.app";
 const REQUEST_TIMEOUT_MS = 7000;
 
 type RemoteNameImage = {
@@ -12,11 +13,11 @@ type RemoteNameImage = {
 };
 
 function getApiUrl() {
-  return API_URL?.trim().replace(/\/$/, "");
+  return (API_URL?.trim() || FALLBACK_API_URL).replace(/\/$/, "");
 }
 
 function hasApiUrl() {
-  return typeof API_URL === "string" && API_URL.trim().length > 0;
+  return true;
 }
 
 function normalizeAspectRatio(value: unknown) {

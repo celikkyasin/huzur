@@ -20,10 +20,11 @@ export type PrayerNotificationPreferences = {
   soundMode: PrayerNotificationSoundMode;
 };
 
-export const reminderMinuteOptions = [0, 5, 10, 15, 20, 30] as const;
+export const MIN_REMINDER_MINUTES = 0;
+export const MAX_REMINDER_MINUTES = 30;
 export const soundModeOptions: Array<{ mode: PrayerNotificationSoundMode; label: string; description: string }> = [
   { mode: "silent", label: "Sessiz", description: "Sadece ekranda bildirim gösterir." },
-  { mode: "default", label: "Telefon sesi", description: "Telefonun seçili bildirim sesiyle uyarır." },
+  { mode: "default", label: "Huzur sesi", description: "Huzur bildirim kanalındaki seçili sesle uyarır." },
   { mode: "adhan", label: "Ezan", description: "Vakit girince ezan sesi çalar." }
 ];
 
@@ -57,9 +58,12 @@ function subtractMinutes(hour: number, minute: number, amount: number) {
 function normalizePreferences(value?: Partial<PrayerNotificationPreferences> | null): PrayerNotificationPreferences {
   const reminderMinutes = Number(value?.reminderMinutes);
   const soundMode = value?.soundMode;
+  const normalizedReminderMinutes = Number.isFinite(reminderMinutes)
+    ? Math.max(MIN_REMINDER_MINUTES, Math.min(MAX_REMINDER_MINUTES, Math.round(reminderMinutes)))
+    : defaultPreferences.reminderMinutes;
 
   return {
-    reminderMinutes: reminderMinuteOptions.includes(reminderMinutes as (typeof reminderMinuteOptions)[number]) ? reminderMinutes : defaultPreferences.reminderMinutes,
+    reminderMinutes: normalizedReminderMinutes,
     soundMode: soundMode === "silent" || soundMode === "default" || soundMode === "adhan" ? soundMode : defaultPreferences.soundMode
   };
 }

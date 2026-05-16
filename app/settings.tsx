@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Alert, Linking, Pressable, StyleSheet, Switch, Text, View, type GestureResponderEvent } from "react-native";
+import { Alert, Linking, Platform, Pressable, StyleSheet, Switch, Text, View, type GestureResponderEvent } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import { AppHeader } from "@/components/AppHeader";
@@ -11,6 +11,7 @@ import { SectionTitle } from "@/components/ui/SectionTitle";
 import {
   getPrayerNotificationPreferences,
   getPrayerNotificationsEnabled,
+  MAX_REMINDER_MINUTES,
   setPrayerNotificationPreferences,
   setPrayerNotificationsEnabled,
   soundModeOptions,
@@ -21,9 +22,7 @@ import { usePrayerTimesStore } from "@/store/prayerTimesStore";
 import { colors, radii, shadows, typography } from "@/theme";
 import type { SettingsItem } from "@/types";
 
-const APP_VERSION = "1.0.59";
-const MAX_REMINDER_MINUTES = 30;
-const REMINDER_STEP_MINUTES = 5;
+const APP_VERSION = "1.0.61";
 
 const preferenceItems: SettingsItem[] = [{ id: "prayer", title: "Namaz Vakti Bildirimleri", subtitle: "Dakika ve ses tercihini düzenle", icon: "notifications" }];
 
@@ -121,15 +120,22 @@ export default function SettingsScreen() {
 
   const updateReminderFromGesture = (event: GestureResponderEvent) => {
     const ratio = Math.max(0, Math.min(1, event.nativeEvent.locationX / Math.max(1, reminderTrackWidth)));
-    const nextMinutes = Math.round((ratio * MAX_REMINDER_MINUTES) / REMINDER_STEP_MINUTES) * REMINDER_STEP_MINUTES;
+    const nextMinutes = Math.round(ratio * MAX_REMINDER_MINUTES);
     void updateNotificationPreferences({ reminderMinutes: nextMinutes });
   };
 
-  const openSystemNotificationSettings = async () => {
+  const openAppNotificationSettings = async () => {
     try {
+      if (Platform.OS === "android" && Linking.sendIntent) {
+        await Linking.sendIntent("android.settings.APP_NOTIFICATION_SETTINGS", [
+          { key: "android.provider.extra.APP_PACKAGE", value: "com.huzur.app" }
+        ]);
+        return;
+      }
+
       await Linking.openSettings();
     } catch {
-      Alert.alert("Ayarlar açılamadı", "Telefon ayarlarından Huzur > Bildirimler bölümüne girerek standart bildirim sesini değiştirebilirsiniz.");
+      Alert.alert("Ayarlar açılamadı", "Telefon ayarlarından Huzur > Bildirimler bölümüne girerek sadece Huzur uygulamasının bildirim sesini değiştirebilirsiniz.");
     }
   };
 
@@ -209,9 +215,9 @@ export default function SettingsScreen() {
         })}
       </View>
 
-      <Pressable accessibilityRole="button" onPress={openSystemNotificationSettings} style={({ pressed }) => [styles.systemSoundButton, pressed && styles.pressed]}>
+      <Pressable accessibilityRole="button" onPress={openAppNotificationSettings} style={({ pressed }) => [styles.systemSoundButton, pressed && styles.pressed]}>
         <Ionicons name="settings" size={17} color={colors.emerald} />
-        <Text style={styles.systemSoundText}>Telefonun standart bildirim sesini seç</Text>
+        <Text style={styles.systemSoundText}>Huzur bildirim sesini değiştir</Text>
       </Pressable>
     </Card>
   );

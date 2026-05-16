@@ -57,9 +57,11 @@ export function PrayerTimeCard({ locationLabel, prayerTimes, isLocating, isLoadi
               <Ionicons name="calendar" size={15} color={colors.goldSoft} />
             </View>
             <View style={styles.infoTextWrap}>
-              <Text style={styles.infoLabel}>Bugün</Text>
-              <Text style={styles.infoValue} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.82}>
-                {prayerState.displayDate} • {prayerState.hijriDate}
+              <Text style={styles.dateValue} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.9}>
+                {prayerState.displayDate}
+              </Text>
+              <Text style={styles.hijriValue} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.86}>
+                {prayerState.hijriDate}
               </Text>
             </View>
           </View>
@@ -224,6 +226,19 @@ const styles = StyleSheet.create({
     fontWeight: "900",
     textTransform: "uppercase",
     letterSpacing: 1.1
+  },
+  dateValue: {
+    color: colors.white,
+    fontSize: 10.5,
+    lineHeight: 13,
+    fontWeight: "900"
+  },
+  hijriValue: {
+    color: colors.goldSoft,
+    marginTop: 1,
+    fontSize: 10,
+    lineHeight: 13,
+    fontWeight: "900"
   },
   infoValue: {
     color: colors.white,
