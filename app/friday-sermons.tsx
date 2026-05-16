@@ -3,6 +3,7 @@ import { Linking, Pressable, StyleSheet, Text, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { WebView } from "react-native-webview";
 import { AppHeader } from "@/components/AppHeader";
+import { NativeMessageAdCard } from "@/components/NativeMessageAdCard";
 import { Card } from "@/components/ui/Card";
 import { ScreenContainer } from "@/components/ui/ScreenContainer";
 import { buildFridayKhutbahMonths, getKhutbahPreview, getKhutbahYoutubeEmbedHtml, latestFridayKhutbah, mergeFridayKhutbahs } from "@/data/fridayKhutbahs";
@@ -57,11 +58,12 @@ export default function FridaySermonsScreen() {
       </Card>
 
       <View style={styles.list}>
-        {months.map((month) => {
+        {months.map((month, monthIndex) => {
           const isOpen = openMonthKey === month.key;
 
           return (
-            <Card key={month.key} style={styles.monthCard}>
+            <View key={month.key}>
+            <Card style={styles.monthCard}>
               <Pressable
                 accessibilityRole="button"
                 accessibilityLabel={`${month.label} hutbelerini ${isOpen ? "kapat" : "aç"}`}
@@ -156,6 +158,8 @@ export default function FridaySermonsScreen() {
                 </View>
               ) : null}
             </Card>
+            {(monthIndex + 1) % 2 === 0 && monthIndex < months.length - 1 ? <NativeMessageAdCard style={styles.monthAdCard} /> : null}
+            </View>
           );
         })}
       </View>
@@ -217,6 +221,10 @@ const styles = StyleSheet.create({
   monthCard: {
     padding: 0,
     overflow: "hidden"
+  },
+  monthAdCard: {
+    marginTop: 14,
+    marginBottom: 0
   },
   monthHeader: {
     minHeight: 70,

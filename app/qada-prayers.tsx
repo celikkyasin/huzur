@@ -2,6 +2,7 @@ import { useEffect } from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { AppHeader } from "@/components/AppHeader";
+import { NativeMessageAdCard } from "@/components/NativeMessageAdCard";
 import { Card } from "@/components/ui/Card";
 import { ScreenContainer } from "@/components/ui/ScreenContainer";
 import { trackedPrayers } from "@/store/prayerTrackerStore";
@@ -51,6 +52,7 @@ export default function QadaPrayersScreen() {
             </View>
           </Card>
         ))}
+        <NativeMessageAdCard style={styles.bottomAdCard} />
       </View>
     </ScreenContainer>
   );
@@ -82,6 +84,10 @@ const styles = StyleSheet.create({
     gap: 12,
     marginTop: 18,
     paddingBottom: 18
+  },
+  bottomAdCard: {
+    marginTop: 4,
+    marginBottom: 0
   },
   item: {
     minHeight: 112,

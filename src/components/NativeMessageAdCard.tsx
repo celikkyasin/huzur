@@ -1,6 +1,6 @@
 import { Ionicons } from "@expo/vector-icons";
 import { useEffect, useState } from "react";
-import { ActivityIndicator, Image, StyleSheet, Text, View } from "react-native";
+import { ActivityIndicator, Image, StyleSheet, Text, View, type StyleProp, type ViewStyle } from "react-native";
 import {
   NativeAd,
   NativeAdChoicesPlacement,
@@ -13,7 +13,11 @@ import {
 } from "react-native-google-mobile-ads";
 import { colors, radii, shadows, typography } from "@/theme";
 
-export function NativeMessageAdCard() {
+type NativeMessageAdCardProps = {
+  style?: StyleProp<ViewStyle>;
+};
+
+export function NativeMessageAdCard({ style }: NativeMessageAdCardProps) {
   const [nativeAd, setNativeAd] = useState<NativeAd | null>(null);
   const [failed, setFailed] = useState(false);
 
@@ -52,7 +56,7 @@ export function NativeMessageAdCard() {
 
   if (!nativeAd) {
     return (
-      <View style={styles.loadingCard}>
+      <View style={[styles.loadingCard, style]}>
         <ActivityIndicator color={colors.emerald} />
         <Text style={styles.loadingText}>Test reklam hazırlanıyor</Text>
       </View>
@@ -60,7 +64,7 @@ export function NativeMessageAdCard() {
   }
 
   return (
-    <NativeAdView nativeAd={nativeAd} style={styles.card}>
+    <NativeAdView nativeAd={nativeAd} style={[styles.card, style]}>
       <View style={styles.topRow}>
         {nativeAd.icon ? (
           <NativeAsset assetType={NativeAssetType.ICON}>

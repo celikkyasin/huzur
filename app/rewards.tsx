@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { ActivityIndicator, Alert, Image, Modal, Pressable, StyleSheet, Text, TextInput, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { AppHeader } from "@/components/AppHeader";
+import { RewardedAdPointsCard } from "@/components/RewardedAdPointsCard";
 import { Card } from "@/components/ui/Card";
 import { PrimaryButton } from "@/components/ui/PrimaryButton";
 import { ScreenContainer } from "@/components/ui/ScreenContainer";
@@ -226,6 +227,8 @@ export default function RewardsScreen() {
             <Text style={styles.rewardRuleText}>Namaz takibi: vakit +2, gün +10</Text>
           </View>
         </View>
+
+        <RewardedAdPointsCard />
 
         <View style={styles.leaderboard}>
           {leaderboard.map((item, index) => (

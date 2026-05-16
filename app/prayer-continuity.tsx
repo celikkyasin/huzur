@@ -2,6 +2,7 @@ import { useMemo, useState } from "react";
 import { Modal, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { AppHeader } from "@/components/AppHeader";
+import { NativeMessageAdCard } from "@/components/NativeMessageAdCard";
 import { Card } from "@/components/ui/Card";
 import { ScreenContainer } from "@/components/ui/ScreenContainer";
 import { useQadaPrayerStore } from "@/store/qadaPrayerStore";
@@ -191,6 +192,7 @@ export default function PrayerContinuityScreen() {
             </Card>
           );
         })}
+        <NativeMessageAdCard style={styles.bottomAdCard} />
       </View>
 
       <Modal transparent visible={completionModalVisible} animationType="fade" onRequestClose={() => setCompletionModalVisible(false)}>
@@ -311,6 +313,10 @@ const styles = StyleSheet.create({
   prayerList: {
     gap: 12,
     paddingBottom: 18
+  },
+  bottomAdCard: {
+    marginTop: 4,
+    marginBottom: 0
   },
   prayerCard: {
     gap: 14

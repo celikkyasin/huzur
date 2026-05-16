@@ -16,6 +16,8 @@ import { useRewardStore } from "@/store/rewardStore";
 import type { FridayMessage } from "@/types";
 import { colors, radii, typography } from "@/theme";
 
+type PreviewItem = { type: "message"; id: string; message: FridayMessage; messageIndex: number } | { type: "ad"; id: string };
+
 function getImageSource(message: FridayMessage) {
   return message.imageUrl ? { uri: message.imageUrl } : message.image;
 }
@@ -95,7 +97,21 @@ export default function FridayMessagesScreen() {
     return [...fridayMessages, ...remoteAdditions];
   }, [remoteMessages]);
   const visibleMessages = useMemo(() => messages.filter((message) => getMessageCategory(message) === selectedCategory), [messages, selectedCategory]);
-  const previewMessage = previewIndex === null ? null : visibleMessages[previewIndex] ?? null;
+  const previewItems = useMemo<PreviewItem[]>(() => {
+    const items: PreviewItem[] = [];
+
+    visibleMessages.forEach((message, index) => {
+      items.push({ type: "message", id: message.id, message, messageIndex: index });
+
+      if ((index + 1) % 3 === 0 && index < visibleMessages.length - 1) {
+        items.push({ type: "ad", id: `ad-${selectedCategory}-${index}` });
+      }
+    });
+
+    return items;
+  }, [selectedCategory, visibleMessages]);
+  const previewItem = previewIndex === null ? null : previewItems[previewIndex] ?? null;
+  const previewMessage = previewItem?.type === "message" ? previewItem.message : null;
   const previewImageHeight = Math.max(320, screenHeight - 190);
 
   useEffect(() => {
@@ -113,7 +129,7 @@ export default function FridayMessagesScreen() {
   }, []);
 
   const openPreview = (message: FridayMessage) => {
-    const messageIndex = visibleMessages.findIndex((item) => item.id === message.id);
+    const messageIndex = previewItems.findIndex((item) => item.type === "message" && item.message.id === message.id);
     const nextIndex = messageIndex >= 0 ? messageIndex : 0;
     setPreviewStartIndex(nextIndex);
     setPreviewIndex(nextIndex);
@@ -125,7 +141,7 @@ export default function FridayMessagesScreen() {
     const pageHeight = event.nativeEvent.layoutMeasurement.height;
     const nextIndex = Math.round(event.nativeEvent.contentOffset.y / pageHeight);
 
-    if (nextIndex >= 0 && nextIndex < visibleMessages.length) {
+    if (nextIndex >= 0 && nextIndex < previewItems.length) {
       setPreviewIndex(nextIndex);
     }
   };
@@ -213,7 +229,7 @@ export default function FridayMessagesScreen() {
         <View style={styles.previewBackdrop}>
           <View style={styles.previewCounter}>
             <Text style={styles.previewCounterText}>
-              {(previewIndex ?? 0) + 1} / {visibleMessages.length}
+              {previewItem?.type === "message" ? `${previewItem.messageIndex + 1} / ${visibleMessages.length}` : "Reklam"}
             </Text>
           </View>
           <Pressable accessibilityRole="button" accessibilityLabel="Tam ekranı kapat" onPress={closePreview} style={styles.closeButton}>
@@ -221,7 +237,7 @@ export default function FridayMessagesScreen() {
           </Pressable>
           <FlatList
             key={`preview-${previewStartIndex}-${screenHeight}-${visibleMessages.length}-${selectedCategory}`}
-            data={visibleMessages}
+            data={previewItems}
             keyExtractor={(item) => item.id}
             pagingEnabled
             showsVerticalScrollIndicator={false}
@@ -229,8 +245,16 @@ export default function FridayMessagesScreen() {
             getItemLayout={(_, index) => ({ length: screenHeight, offset: screenHeight * index, index })}
             onMomentumScrollEnd={handlePreviewScrollEnd}
             renderItem={({ item }) => {
-              const imageSource = getImageSource(item);
-              const imageAspectRatio = getImageAspectRatio(item);
+              if (item.type === "ad") {
+                return (
+                  <View style={[styles.previewPage, styles.previewAdPage, { width: screenWidth, height: screenHeight }]}>
+                    <NativeMessageAdCard style={styles.previewAdCard} />
+                  </View>
+                );
+              }
+
+              const imageSource = getImageSource(item.message);
+              const imageAspectRatio = getImageAspectRatio(item.message);
               const previewWidth = Math.min(screenWidth, previewImageHeight * imageAspectRatio);
 
               return (
@@ -341,6 +365,14 @@ const styles = StyleSheet.create({
   },
   previewImage: {
     maxWidth: "100%"
+  },
+  previewAdPage: {
+    paddingHorizontal: 18
+  },
+  previewAdCard: {
+    width: "100%",
+    maxWidth: 430,
+    marginBottom: 0
   },
   previewActions: {
     position: "absolute",
