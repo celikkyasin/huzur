@@ -7,6 +7,7 @@ import * as Sharing from "expo-sharing";
 import { Ionicons } from "@expo/vector-icons";
 import { AppHeader } from "@/components/AppHeader";
 import { MessageCard } from "@/components/MessageCard";
+import { NativeMessageAdCard } from "@/components/NativeMessageAdCard";
 import { ScreenContainer } from "@/components/ui/ScreenContainer";
 import { SectionTitle } from "@/components/ui/SectionTitle";
 import { fridayCategories, fridayMessages } from "@/data/fridayMessages";
@@ -201,8 +202,11 @@ export default function FridayMessagesScreen() {
       {visibleMessages[0] ? <MessageCard message={visibleMessages[0]} featured onShare={() => shareMessage(visibleMessages[0])} onDownload={() => downloadMessage(visibleMessages[0])} onPreview={() => openPreview(visibleMessages[0])} /> : null}
 
       <SectionTitle title="Hazır Kartlar" />
-      {visibleMessages.slice(1).map((message) => (
-        <MessageCard key={message.id} message={message} onShare={() => shareMessage(message)} onDownload={() => downloadMessage(message)} onPreview={() => openPreview(message)} />
+      {visibleMessages.slice(1).map((message, index) => (
+        <View key={message.id}>
+          <MessageCard message={message} onShare={() => shareMessage(message)} onDownload={() => downloadMessage(message)} onPreview={() => openPreview(message)} />
+          {(index + 1) % 3 === 0 ? <NativeMessageAdCard /> : null}
+        </View>
       ))}
 
       <Modal visible={previewIndex !== null} transparent animationType="fade" onRequestClose={closePreview}>

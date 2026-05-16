@@ -3,6 +3,7 @@ import "@/styles/global.css";
 import { Stack } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import { AndroidBackHandler } from "@/components/AndroidBackHandler";
+import { AdMobGate } from "@/components/AdMobGate";
 import { FavoriteDuaGate } from "@/components/FavoriteDuaGate";
 import { HomeLaunchGate } from "@/components/HomeLaunchGate";
 import { LocationPermissionGate } from "@/components/LocationPermissionGate";
@@ -19,6 +20,7 @@ export default function RootLayout() {
   return (
     <>
       <AndroidBackHandler />
+      <AdMobGate />
       <HomeLaunchGate />
       <LocationPermissionGate />
       <FavoriteDuaGate />
