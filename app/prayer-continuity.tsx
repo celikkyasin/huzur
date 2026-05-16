@@ -1,9 +1,10 @@
 import { useMemo, useState } from "react";
-import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { Modal, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { AppHeader } from "@/components/AppHeader";
 import { Card } from "@/components/ui/Card";
 import { ScreenContainer } from "@/components/ui/ScreenContainer";
+import { useQadaPrayerStore } from "@/store/qadaPrayerStore";
 import { usePrayerTimesStore } from "@/store/prayerTimesStore";
 import { useRewardStore } from "@/store/rewardStore";
 import {
@@ -71,8 +72,10 @@ function canMarkPrayer(date: Date, time?: string) {
 
 export default function PrayerContinuityScreen() {
   const [selectedDate, setSelectedDate] = useState(new Date());
+  const [completionModalVisible, setCompletionModalVisible] = useState(false);
   const records = usePrayerTrackerStore((state) => state.records);
   const markPrayer = usePrayerTrackerStore((state) => state.markPrayer);
+  const addQadaPrayer = useQadaPrayerStore((state) => state.changeCount);
   const prayerTimes = usePrayerTimesStore((state) => state.times);
   const awardReward = useRewardStore((state) => state.awardReward);
   const recentDates = useMemo(() => getRecentPrayerDates(7), []);
@@ -84,7 +87,12 @@ export default function PrayerContinuityScreen() {
   const timeMap = useMemo(() => new Map(prayerTimes.map((time) => [time.id, time.time])), [prayerTimes]);
 
   const updatePrayer = async (prayerId: TrackedPrayerId, status: PrayerCompletionStatus) => {
+    const previousStatus = records[selectedDateKey]?.prayers[prayerId];
     const rewards = await markPrayer(selectedDateKey, prayerId, status);
+
+    if (status === "missed" && previousStatus !== "missed") {
+      await addQadaPrayer(prayerId, 1);
+    }
 
     if (rewards.prayerReward) {
       void awardReward({
@@ -98,7 +106,7 @@ export default function PrayerContinuityScreen() {
         action: "prayerCompleteDay",
         ...rewards.dayReward
       });
-      Alert.alert("Gün tamamlandı", "Bugünün 5 vakit namaz takibi tamamlandı. +10 puan eklendi.");
+      setCompletionModalVisible(true);
     }
   };
 
@@ -184,6 +192,27 @@ export default function PrayerContinuityScreen() {
           );
         })}
       </View>
+
+      <Modal transparent visible={completionModalVisible} animationType="fade" onRequestClose={() => setCompletionModalVisible(false)}>
+        <View style={styles.modalBackdrop}>
+          <View style={styles.completionModal}>
+            <View style={styles.modalGlow} />
+            <View style={styles.modalIconWrap}>
+              <Ionicons name="checkmark-circle" size={42} color={colors.gold} />
+            </View>
+            <Text style={styles.modalEyebrow}>GÜN TAMAMLANDI</Text>
+            <Text style={styles.modalTitle}>5 vakit namaz takibin tamamlandı</Text>
+            <Text style={styles.modalText}>Bugünün devamlılığı kaydedildi ve ödül puanın eklendi.</Text>
+            <View style={styles.modalReward}>
+              <Ionicons name="sparkles" size={18} color={colors.gold} />
+              <Text style={styles.modalRewardText}>+10 puan</Text>
+            </View>
+            <Pressable accessibilityRole="button" onPress={() => setCompletionModalVisible(false)} style={styles.modalButton}>
+              <Text style={styles.modalButtonText}>Tamam</Text>
+            </Pressable>
+          </View>
+        </View>
+      </Modal>
     </ScreenContainer>
   );
 }
@@ -350,5 +379,92 @@ const styles = StyleSheet.create({
   },
   disabledStatusText: {
     color: colors.muted
+  },
+  modalBackdrop: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+    padding: 24,
+    backgroundColor: "rgba(9,22,18,0.58)"
+  },
+  completionModal: {
+    width: "100%",
+    maxWidth: 390,
+    overflow: "hidden",
+    alignItems: "center",
+    borderRadius: radii.xl,
+    padding: 24,
+    backgroundColor: colors.emerald,
+    borderWidth: 1,
+    borderColor: "rgba(215,179,90,0.55)"
+  },
+  modalGlow: {
+    position: "absolute",
+    top: -90,
+    width: 210,
+    height: 210,
+    borderRadius: 105,
+    backgroundColor: "rgba(215,179,90,0.22)"
+  },
+  modalIconWrap: {
+    width: 76,
+    height: 76,
+    borderRadius: radii.round,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "rgba(255,255,255,0.12)",
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.18)"
+  },
+  modalEyebrow: {
+    marginTop: 18,
+    color: colors.gold,
+    fontSize: 12,
+    fontWeight: "900",
+    letterSpacing: 0.8
+  },
+  modalTitle: {
+    marginTop: 8,
+    color: colors.white,
+    textAlign: "center",
+    fontSize: 26,
+    lineHeight: 32,
+    fontWeight: "900",
+    fontFamily: typography.title
+  },
+  modalText: {
+    marginTop: 10,
+    color: "rgba(255,255,255,0.78)",
+    textAlign: "center",
+    fontWeight: "800",
+    lineHeight: 21
+  },
+  modalReward: {
+    marginTop: 18,
+    minHeight: 44,
+    borderRadius: radii.round,
+    paddingHorizontal: 18,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    backgroundColor: "rgba(255,255,255,0.12)"
+  },
+  modalRewardText: {
+    color: colors.white,
+    fontSize: 18,
+    fontWeight: "900"
+  },
+  modalButton: {
+    width: "100%",
+    minHeight: 48,
+    marginTop: 20,
+    borderRadius: radii.round,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: colors.gold
+  },
+  modalButtonText: {
+    color: colors.ink,
+    fontWeight: "900"
   }
 });

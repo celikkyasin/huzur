@@ -37,6 +37,14 @@
       "destination": "/api/friday-messages/admin"
     },
     {
+      "source": "/friday-sermons/config",
+      "destination": "/api/friday-sermons?route=config"
+    },
+    {
+      "source": "/friday-sermons/sync",
+      "destination": "/api/friday-sermons?route=sync"
+    },
+    {
       "source": "/names-of-allah/config",
       "destination": "/api/names-of-allah?route=config"
     },
@@ -57,5 +65,11 @@
     "api/**/*.js": {
       "maxDuration": 10
     }
-  }
+  },
+  "crons": [
+    {
+      "path": "/api/friday-sermons",
+      "schedule": "0 18 * * 5"
+    }
+  ]
 }

@@ -1,14 +1,38 @@
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Linking, Pressable, StyleSheet, Text, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
+import { WebView } from "react-native-webview";
 import { AppHeader } from "@/components/AppHeader";
 import { Card } from "@/components/ui/Card";
 import { ScreenContainer } from "@/components/ui/ScreenContainer";
-import { fridayKhutbahMonths, getKhutbahPreview, getKhutbahYoutubeUrl, latestFridayKhutbah } from "@/data/fridayKhutbahs";
+import { buildFridayKhutbahMonths, getKhutbahPreview, getKhutbahYoutubeEmbedHtml, latestFridayKhutbah, mergeFridayKhutbahs } from "@/data/fridayKhutbahs";
+import { fetchRemoteFridaySermons } from "@/services/fridaySermonsApi";
 import { colors, radii, typography } from "@/theme";
 
 export default function FridaySermonsScreen() {
+  const [khutbahs, setKhutbahs] = useState(() => mergeFridayKhutbahs(null));
   const [openMonthKey, setOpenMonthKey] = useState(latestFridayKhutbah.monthKey);
+  const [openVideoId, setOpenVideoId] = useState<string | null>(null);
+  const months = useMemo(() => buildFridayKhutbahMonths(khutbahs), [khutbahs]);
+  const latestKhutbah = khutbahs[0] || latestFridayKhutbah;
+
+  useEffect(() => {
+    let isMounted = true;
+
+    fetchRemoteFridaySermons().then((remoteKhutbahs) => {
+      if (!isMounted || !remoteKhutbahs?.length) {
+        return;
+      }
+
+      const merged = mergeFridayKhutbahs(remoteKhutbahs);
+      setKhutbahs(merged);
+      setOpenMonthKey((current) => current || merged[0]?.monthKey || latestFridayKhutbah.monthKey);
+    });
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
 
   return (
     <ScreenContainer>
@@ -16,9 +40,9 @@ export default function FridaySermonsScreen() {
       <View style={styles.hero}>
         <View style={styles.heroText}>
           <Text style={styles.eyebrow}>Bu haftanın hutbesi</Text>
-          <Text style={styles.title}>{latestFridayKhutbah.title}</Text>
+          <Text style={styles.title}>{latestKhutbah.title}</Text>
           <Text style={styles.subtitle}>
-            {latestFridayKhutbah.date} - {latestFridayKhutbah.sourceName}
+            {latestKhutbah.date} - {latestKhutbah.sourceName}
           </Text>
         </View>
         <View style={styles.heroIcon}>
@@ -34,7 +58,7 @@ export default function FridaySermonsScreen() {
       </Card>
 
       <View style={styles.list}>
-        {fridayKhutbahMonths.map((month) => {
+        {months.map((month) => {
           const isOpen = openMonthKey === month.key;
 
           return (
@@ -57,7 +81,9 @@ export default function FridaySermonsScreen() {
               {isOpen ? (
                 <View style={styles.monthItems}>
                   {month.items.map((khutbah) => {
-                    const isLatest = khutbah.id === latestFridayKhutbah.id;
+                    const isLatest = khutbah.id === latestKhutbah.id;
+                    const embedHtml = getKhutbahYoutubeEmbedHtml(khutbah);
+                    const isVideoOpen = openVideoId === khutbah.id;
 
                     return (
                       <View key={khutbah.id} style={[styles.sermonRow, isLatest && styles.latestRow]}>
@@ -73,6 +99,40 @@ export default function FridaySermonsScreen() {
                         </View>
                         <Text style={styles.cardTitle}>{khutbah.title}</Text>
                         <Text style={styles.summary}>{khutbah.summary}</Text>
+                        {embedHtml ? (
+                          <View style={styles.videoCard}>
+                            <View style={styles.videoHeader}>
+                              <View style={styles.videoTitleRow}>
+                                <Ionicons name="logo-youtube" size={20} color="#d93025" />
+                                <Text style={styles.videoTitle}>Hutbe videosu</Text>
+                              </View>
+                              <Pressable
+                                accessibilityRole="button"
+                                accessibilityLabel={`${khutbah.title} videosunu ${isVideoOpen ? "kapat" : "oynat"}`}
+                                onPress={() => setOpenVideoId(isVideoOpen ? null : khutbah.id)}
+                                style={styles.videoButton}
+                              >
+                                <Ionicons name={isVideoOpen ? "close" : "play"} size={17} color={colors.white} />
+                                <Text style={styles.videoButtonText}>{isVideoOpen ? "Kapat" : "Oynat"}</Text>
+                              </Pressable>
+                            </View>
+                            {isVideoOpen ? (
+                              <View style={styles.videoFrame}>
+                                <WebView
+                                  source={{ html: embedHtml, baseUrl: "https://www.youtube-nocookie.com" }}
+                                  allowsFullscreenVideo
+                                  allowsInlineMediaPlayback
+                                  androidLayerType="hardware"
+                                  javaScriptEnabled
+                                  domStorageEnabled
+                                  mediaPlaybackRequiresUserAction={false}
+                                  setSupportMultipleWindows={false}
+                                  style={styles.videoWebView}
+                                />
+                              </View>
+                            ) : null}
+                          </View>
+                        ) : null}
                         <View style={styles.previewBox}>
                           <View style={styles.previewHeader}>
                             <Ionicons name="reader-outline" size={17} color={colors.gold} />
@@ -89,15 +149,6 @@ export default function FridaySermonsScreen() {
                           >
                             <Ionicons name="open-outline" size={18} color={colors.emerald} />
                             <Text style={styles.sourceButtonText}>Devamını Diyanet'te oku</Text>
-                          </Pressable>
-                          <Pressable
-                            accessibilityRole="button"
-                            accessibilityLabel={`${khutbah.title} hutbesi videosunu YouTube'da ara`}
-                            onPress={() => Linking.openURL(getKhutbahYoutubeUrl(khutbah))}
-                            style={[styles.sourceButton, styles.youtubeButton]}
-                          >
-                            <Ionicons name="logo-youtube" size={18} color="#B42318" />
-                            <Text style={[styles.sourceButtonText, styles.youtubeButtonText]}>YouTube'da izle</Text>
                           </Pressable>
                         </View>
                       </View>
@@ -264,6 +315,56 @@ const styles = StyleSheet.create({
     fontWeight: "800",
     lineHeight: 21
   },
+  videoCard: {
+    gap: 10,
+    borderRadius: radii.md,
+    padding: 12,
+    backgroundColor: colors.white,
+    borderWidth: 1,
+    borderColor: "rgba(0,105,79,0.16)"
+  },
+  videoHeader: {
+    minHeight: 38,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: 10
+  },
+  videoTitleRow: {
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8
+  },
+  videoTitle: {
+    color: colors.ink,
+    fontWeight: "900"
+  },
+  videoButton: {
+    minHeight: 36,
+    borderRadius: radii.round,
+    paddingHorizontal: 12,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    backgroundColor: colors.emerald
+  },
+  videoButtonText: {
+    color: colors.white,
+    fontSize: 12,
+    fontWeight: "900"
+  },
+  videoFrame: {
+    width: "100%",
+    aspectRatio: 16 / 9,
+    overflow: "hidden",
+    borderRadius: radii.md,
+    backgroundColor: colors.ink
+  },
+  videoWebView: {
+    flex: 1,
+    backgroundColor: colors.ink
+  },
   previewBox: {
     gap: 8,
     borderRadius: radii.md,
@@ -308,11 +409,5 @@ const styles = StyleSheet.create({
   sourceButtonText: {
     color: colors.emerald,
     fontWeight: "900"
-  },
-  youtubeButton: {
-    backgroundColor: "#FCE8E6"
-  },
-  youtubeButtonText: {
-    color: "#B42318"
   }
 });

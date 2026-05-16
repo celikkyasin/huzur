@@ -8,6 +8,7 @@ export type FridayKhutbah = {
   summary: string;
   sourceName: string;
   sourceUrl: string;
+  youtubeVideoId?: string;
 };
 
 export type FridayKhutbahMonth = {
@@ -66,9 +67,47 @@ export function getKhutbahPreview(id: string) {
   return khutbahPreviews[id] ?? "Hutbenin kısa özeti burada gösterilir; resmi metnin tamamı için kaynak bağlantısı açılır.";
 }
 
-export function getKhutbahYoutubeUrl(khutbah: FridayKhutbah) {
-  const query = `Diyanet Cuma Hutbesi ${khutbah.date} ${khutbah.title}`;
-  return `https://www.youtube.com/results?search_query=${encodeURIComponent(query)}`;
+export function getKhutbahYoutubeEmbedHtml(khutbah: FridayKhutbah) {
+  if (!khutbah.youtubeVideoId) {
+    return null;
+  }
+
+  const videoId = encodeURIComponent(khutbah.youtubeVideoId);
+  const videoUrl = `https://www.youtube-nocookie.com/embed/${videoId}?playsinline=1&rel=0&modestbranding=1&controls=1&fs=1&iv_load_policy=3`;
+
+  return `<!doctype html>
+<html>
+  <head>
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+    <style>
+      html,
+      body {
+        margin: 0;
+        padding: 0;
+        width: 100%;
+        height: 100%;
+        overflow: hidden;
+        background: #10231f;
+      }
+
+      iframe {
+        position: fixed;
+        inset: 0;
+        width: 100%;
+        height: 100%;
+        border: 0;
+      }
+    </style>
+  </head>
+  <body>
+    <iframe
+      src="${videoUrl}"
+      title="Diyanet Cuma Hutbesi"
+      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+      allowfullscreen>
+    </iframe>
+  </body>
+</html>`;
 }
 
 export const fridayKhutbahs: FridayKhutbah[] = [
@@ -81,7 +120,8 @@ export const fridayKhutbahs: FridayKhutbah[] = [
     title: "Her Şey Allah'ı Anlatır",
     summary: "Diyanet TV arşivinde yer alan 2 Ocak 2026 Cuma hutbesi kaydı.",
     sourceName: "Diyanet TV",
-    sourceUrl: "https://www.diyanet.tv/cuma-hutbesi-canli-cuma-sevinci/video/her-sey-allahi-anlatir-cuma-hutbesi-2-ocak-2026"
+    sourceUrl: "https://www.diyanet.tv/cuma-hutbesi-canli-cuma-sevinci/video/her-sey-allahi-anlatir-cuma-hutbesi-2-ocak-2026",
+    youtubeVideoId: "XaF4s6DLOtk"
   },
   {
     id: "2026-01-09",
@@ -92,7 +132,8 @@ export const fridayKhutbahs: FridayKhutbah[] = [
     title: "Namaz",
     summary: "Diyanet TV arşivinde yer alan 9 Ocak 2026 Cuma hutbesi kaydı.",
     sourceName: "Diyanet TV",
-    sourceUrl: "https://www.diyanet.tv/cuma-hutbesi-canli-cuma-sevinci/video/namaz-cuma-hutbesi-9-ocak-2026"
+    sourceUrl: "https://www.diyanet.tv/cuma-hutbesi-canli-cuma-sevinci/video/namaz-cuma-hutbesi-9-ocak-2026",
+    youtubeVideoId: "pF8QW9ZdgIA"
   },
   {
     id: "2026-01-16",
@@ -103,7 +144,8 @@ export const fridayKhutbahs: FridayKhutbah[] = [
     title: "Din İstismarı",
     summary: "Diyanet TV arşivinde yer alan 16 Ocak 2026 Cuma hutbesi kaydı.",
     sourceName: "Diyanet TV",
-    sourceUrl: "https://www.diyanet.tv/cuma-hutbesi-canli-cuma-sevinci/video/din-istismari-cuma-hutbesi-16-ocak-2026"
+    sourceUrl: "https://www.diyanet.tv/cuma-hutbesi-canli-cuma-sevinci/video/din-istismari-cuma-hutbesi-16-ocak-2026",
+    youtubeVideoId: "lwXVOEf1CG0"
   },
   {
     id: "2026-01-23",
@@ -114,7 +156,8 @@ export const fridayKhutbahs: FridayKhutbah[] = [
     title: "Akran İlişkileri",
     summary: "Diyanet TV arşivinde yer alan 23 Ocak 2026 Cuma hutbesi kaydı.",
     sourceName: "Diyanet TV",
-    sourceUrl: "https://www.diyanet.tv/cuma-hutbesi-canli-cuma-sevinci/video/akran-iliskileri-cuma-hutbesi-23-ocak-2026"
+    sourceUrl: "https://www.diyanet.tv/cuma-hutbesi-canli-cuma-sevinci/video/akran-iliskileri-cuma-hutbesi-23-ocak-2026",
+    youtubeVideoId: "lyJKWkcGiCk"
   },
   {
     id: "2026-01-30",
@@ -125,7 +168,8 @@ export const fridayKhutbahs: FridayKhutbah[] = [
     title: "Tövbeye Yönelmek",
     summary: "Resmi arşiv kontrolü için Diyanet hutbeler sayfasına yönlendirir.",
     sourceName: "Diyanet Haber",
-    sourceUrl: diyanetHaberHutbeler
+    sourceUrl: "https://www.diyanethaber.com.tr/video/30-ocak-2026-cuma-hutbesi",
+    youtubeVideoId: "MJ4hZMkG2MM"
   },
   {
     id: "2026-02-06",
@@ -136,7 +180,8 @@ export const fridayKhutbahs: FridayKhutbah[] = [
     title: "Birlik ve Beraberlik",
     summary: "Diyanet Haber arşivinde yer alan 6 Şubat 2026 Cuma hutbesi kaydı.",
     sourceName: "Diyanet Haber",
-    sourceUrl: "https://www.diyanethaber.com.tr/video/6-subat-2026-cuma-hutbesi"
+    sourceUrl: "https://www.diyanethaber.com.tr/video/6-subat-2026-cuma-hutbesi",
+    youtubeVideoId: "u-_aGBiB67Q"
   },
   {
     id: "2026-02-13",
@@ -147,7 +192,8 @@ export const fridayKhutbahs: FridayKhutbah[] = [
     title: "Ramazan İklimi",
     summary: "Diyanet TV arşivinde yer alan 13 Şubat 2026 Cuma hutbesi kaydı.",
     sourceName: "Diyanet TV",
-    sourceUrl: "https://www.diyanet.tv/cuma-hutbesi-canli-cuma-sevinci/video/ramazan-iklimi-cuma-hutbesi-13-subat-2026"
+    sourceUrl: "https://www.diyanet.tv/cuma-hutbesi-canli-cuma-sevinci/video/ramazan-iklimi-cuma-hutbesi-13-subat-2026",
+    youtubeVideoId: "s2d0qdHSnCU"
   },
   {
     id: "2026-02-20",
@@ -157,8 +203,9 @@ export const fridayKhutbahs: FridayKhutbah[] = [
     monthLabel: "Şubat 2026",
     title: "Ramazan, Cami ve Hayat",
     summary: "Diyanet TV arşiv kaydı; resmi metin için kaynak arşivi açılır.",
-    sourceName: "Diyanet TV",
-    sourceUrl: diyanetTvArchive
+    sourceName: "Diyanet Haber",
+    sourceUrl: "https://www.diyanethaber.com.tr/video/20-subat-2026-cuma-hutbesi",
+    youtubeVideoId: "yqQ2mvA-7C8"
   },
   {
     id: "2026-02-27",
@@ -168,8 +215,9 @@ export const fridayKhutbahs: FridayKhutbah[] = [
     monthLabel: "Şubat 2026",
     title: "Bağımlılıkla Mücadelede Ramazan Bir Fırsattır",
     summary: "Diyanet TV arşiv kaydı; resmi metin için kaynak arşivi açılır.",
-    sourceName: "Diyanet TV",
-    sourceUrl: diyanetTvArchive
+    sourceName: "Diyanet Haber",
+    sourceUrl: "https://www.diyanethaber.com.tr/video/27-subat-2026-cuma-hutbesi",
+    youtubeVideoId: "SZfqKBe4Z_s"
   },
   {
     id: "2026-03-06",
@@ -180,7 +228,8 @@ export const fridayKhutbahs: FridayKhutbah[] = [
     title: "Zekât ve Fıtır Sadakası",
     summary: "Diyanet TV arşivinde yer alan 6 Mart 2026 Cuma hutbesi kaydı.",
     sourceName: "Diyanet TV",
-    sourceUrl: "https://www.diyanet.tv/cuma-hutbesi-canli-cuma-sevinci/video/zekat-ve-fitir-sadakasi-cuma-hutbesi-6-mart-2026"
+    sourceUrl: "https://www.diyanet.tv/cuma-hutbesi-canli-cuma-sevinci/video/zekat-ve-fitir-sadakasi-cuma-hutbesi-6-mart-2026",
+    youtubeVideoId: "zz7UXR-2w9I"
   },
   {
     id: "2026-03-13",
@@ -191,7 +240,8 @@ export const fridayKhutbahs: FridayKhutbah[] = [
     title: "Hak ve Hakikatin Temsilcileri: Peygamberler",
     summary: "Diyanet Haber arşivinde yer alan 13 Mart 2026 Cuma hutbesi kaydı.",
     sourceName: "Diyanet Haber",
-    sourceUrl: "https://www.diyanethaber.com.tr/video/13-mart-2026-cuma-hutbesi"
+    sourceUrl: "https://www.diyanethaber.com.tr/video/13-mart-2026-cuma-hutbesi",
+    youtubeVideoId: "fTdFxJ1bWzg"
   },
   {
     id: "2026-03-20",
@@ -202,7 +252,8 @@ export const fridayKhutbahs: FridayKhutbah[] = [
     title: "Hayatı Ramazan Kılmak",
     summary: "Diyanet Haber arşivinde yer alan 20 Mart 2026 Cuma hutbesi kaydı.",
     sourceName: "Diyanet Haber",
-    sourceUrl: "https://www.diyanethaber.com.tr/video/20-mart-2026-cuma-hutbesi"
+    sourceUrl: "https://www.diyanethaber.com.tr/video/20-mart-2026-cuma-hutbesi",
+    youtubeVideoId: "YStS9umt2cA"
   },
   {
     id: "2026-03-27",
@@ -213,7 +264,8 @@ export const fridayKhutbahs: FridayKhutbah[] = [
     title: "Tevekkül",
     summary: "Diyanet Haber arşivinde yer alan 27 Mart 2026 Cuma hutbesi kaydı.",
     sourceName: "Diyanet Haber",
-    sourceUrl: "https://www.diyanethaber.com.tr/video/27-mart-2026-cuma-hutbesi"
+    sourceUrl: "https://www.diyanethaber.com.tr/video/27-mart-2026-cuma-hutbesi",
+    youtubeVideoId: "BvjofhqQ_ho"
   },
   {
     id: "2026-04-03",
@@ -223,8 +275,9 @@ export const fridayKhutbahs: FridayKhutbah[] = [
     monthLabel: "Nisan 2026",
     title: "Cuma ve Ümmet Bilinci",
     summary: "Diyanet TV arşiv kaydı; resmi metin için kaynak arşivi açılır.",
-    sourceName: "Diyanet TV",
-    sourceUrl: diyanetTvArchive
+    sourceName: "Diyanet Haber",
+    sourceUrl: "https://www.diyanethaber.com.tr/video/03-nisan-2026-cuma-hutbesi",
+    youtubeVideoId: "OXkFv-Dwdtw"
   },
   {
     id: "2026-04-10",
@@ -235,7 +288,8 @@ export const fridayKhutbahs: FridayKhutbah[] = [
     title: "İslam",
     summary: "Diyanet Haber arşivinde yer alan 10 Nisan 2026 Cuma hutbesi kaydı.",
     sourceName: "Diyanet Haber",
-    sourceUrl: "https://www.diyanethaber.com.tr/video/10-nisan-2026-cuma-hutbesi"
+    sourceUrl: "https://www.diyanethaber.com.tr/video/10-nisan-2026-cuma-hutbesi",
+    youtubeVideoId: "Ulw4ftlq5qQ"
   },
   {
     id: "2026-04-17",
@@ -246,7 +300,8 @@ export const fridayKhutbahs: FridayKhutbah[] = [
     title: "Birbirimize Kenetlenelim, Sorumluluklarımızı İdrak Edelim",
     summary: "Diyanet Haber arşivinde yer alan 17 Nisan 2026 Cuma hutbesi kaydı.",
     sourceName: "Diyanet Haber",
-    sourceUrl: "https://www.diyanethaber.com.tr/video/17-nisan-2026-cuma-hutbesi"
+    sourceUrl: "https://www.diyanethaber.com.tr/video/17-nisan-2026-cuma-hutbesi",
+    youtubeVideoId: "1KDEuJ6YOpI"
   },
   {
     id: "2026-04-24",
@@ -256,8 +311,9 @@ export const fridayKhutbahs: FridayKhutbah[] = [
     monthLabel: "Nisan 2026",
     title: "Merhamet Eğitimi",
     summary: "Diyanet TV arşiv kaydı; resmi metin için kaynak arşivi açılır.",
-    sourceName: "Diyanet TV",
-    sourceUrl: diyanetTvArchive
+    sourceName: "Diyanet Haber",
+    sourceUrl: "https://www.diyanethaber.com.tr/video/24-nisan-2026-cuma-hutbesi",
+    youtubeVideoId: "R7Xu5xqux0U"
   },
   {
     id: "2026-05-01",
@@ -267,8 +323,9 @@ export const fridayKhutbahs: FridayKhutbah[] = [
     monthLabel: "Mayıs 2026",
     title: "Alın Teri Mukaddestir",
     summary: "Diyanet TV arşiv kaydı; resmi metin için kaynak arşivi açılır.",
-    sourceName: "Diyanet TV",
-    sourceUrl: diyanetTvArchive
+    sourceName: "Diyanet Haber",
+    sourceUrl: "https://www.diyanethaber.com.tr/video/1-mayi-2026-cuma-hutbesi",
+    youtubeVideoId: "2_K0WBXjkOE"
   },
   {
     id: "2026-05-08",
@@ -279,7 +336,8 @@ export const fridayKhutbahs: FridayKhutbah[] = [
     title: "İbadetler, Bizi Rabbimize Yakınlaştırır",
     summary: "Diyanet TV arşivinde yer alan 8 Mayıs 2026 Cuma hutbesi kaydı.",
     sourceName: "Diyanet TV",
-    sourceUrl: "https://www.diyanet.tv/cuma-hutbesi-canli-cuma-sevinci/video/ibadetler-bizi-rabbimize-yakinlastirir-cuma-hutbesi-8-mayis-2026"
+    sourceUrl: "https://www.diyanet.tv/cuma-hutbesi-canli-cuma-sevinci/video/ibadetler-bizi-rabbimize-yakinlastirir-cuma-hutbesi-8-mayis-2026",
+    youtubeVideoId: "tEm5F6487oE"
   },
   {
     id: "2026-05-15",
@@ -290,7 +348,8 @@ export const fridayKhutbahs: FridayKhutbah[] = [
     title: "Toplumsal Sorumluluklarımız",
     summary: "Diyanet Haber tarafından yayınlanan 15 Mayıs 2026 Cuma hutbesi kaydı.",
     sourceName: "Diyanet Haber",
-    sourceUrl: "https://www.diyanethaber.com.tr/video/15-mayis-2026-cuma-hutbesi"
+    sourceUrl: "https://www.diyanethaber.com.tr/video/15-mayis-2026-cuma-hutbesi",
+    youtubeVideoId: "ZIDAY8_sHjI"
   }
 ];
 
@@ -303,3 +362,29 @@ export const fridayKhutbahMonths: FridayKhutbahMonth[] = Array.from(
 }));
 
 export const latestFridayKhutbah = [...fridayKhutbahs].sort((a, b) => b.isoDate.localeCompare(a.isoDate))[0];
+
+export function mergeFridayKhutbahs(remoteKhutbahs: FridayKhutbah[] | null | undefined) {
+  const byDate = new Map<string, FridayKhutbah>();
+
+  for (const khutbah of fridayKhutbahs) {
+    byDate.set(khutbah.isoDate, khutbah);
+  }
+
+  for (const khutbah of remoteKhutbahs || []) {
+    if (!khutbah.isoDate || !khutbah.title || !khutbah.youtubeVideoId) {
+      continue;
+    }
+
+    byDate.set(khutbah.isoDate, { ...(byDate.get(khutbah.isoDate) || khutbah), ...khutbah });
+  }
+
+  return [...byDate.values()].sort((a, b) => b.isoDate.localeCompare(a.isoDate));
+}
+
+export function buildFridayKhutbahMonths(items: FridayKhutbah[]) {
+  return Array.from(new Map(items.map((item) => [item.monthKey, item.monthLabel]))).map(([key, label]) => ({
+    key,
+    label,
+    items: items.filter((item) => item.monthKey === key)
+  }));
+}
