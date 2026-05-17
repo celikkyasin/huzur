@@ -1,4 +1,5 @@
 const { getLeaderboard, getRewardConfig, getRewardEligibility, handleCors, isAdminRequest, json, readBody, setRewardConfig } = require("../_lib/rewardsStore");
+const { createDuaRequest, listDuaRequests, prayForDuaRequest } = require("../_lib/duaRequestsStore");
 
 module.exports = async function handler(request, response) {
   if (handleCors(request, response)) {
@@ -10,6 +11,11 @@ module.exports = async function handler(request, response) {
       if (request.query?.route === "leaderboard") {
         const leaderboard = await getLeaderboard(request.query?.period, request.query?.limit);
         json(response, 200, leaderboard);
+        return;
+      }
+
+      if (request.query?.route === "dua-requests") {
+        json(response, 200, await listDuaRequests());
         return;
       }
 
@@ -27,6 +33,20 @@ module.exports = async function handler(request, response) {
     }
 
     if (request.method === "POST") {
+      if (request.query?.route === "dua-requests") {
+        const payload = await readBody(request);
+        const result = await createDuaRequest(payload);
+        json(response, result.statusCode || 200, result);
+        return;
+      }
+
+      if (request.query?.route === "dua-pray") {
+        const payload = await readBody(request);
+        const result = await prayForDuaRequest(payload);
+        json(response, result.statusCode || 200, result);
+        return;
+      }
+
       if (!isAdminRequest(request)) {
         json(response, 401, { ok: false, error: "Admin token is required." });
         return;

@@ -26,11 +26,11 @@
     },
     {
       "source": "/dua-requests",
-      "destination": "/api/dua-requests"
+      "destination": "/api/rewards/config?route=dua-requests"
     },
     {
       "source": "/dua-requests/pray",
-      "destination": "/api/dua-requests?route=pray"
+      "destination": "/api/rewards/config?route=dua-pray"
     },
     {
       "source": "/friday-messages/config",
