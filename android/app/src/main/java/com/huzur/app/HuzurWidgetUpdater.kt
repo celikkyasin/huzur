@@ -5,6 +5,7 @@ import android.appwidget.AppWidgetManager
 import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
+import android.graphics.Color
 import android.net.Uri
 import android.widget.RemoteViews
 import org.json.JSONArray
@@ -21,6 +22,7 @@ object HuzurWidgetUpdater {
   private const val KEY_AYAH_TRANSLATION = "ayah_translation"
   private const val KEY_AYAH_SOURCE = "ayah_source"
   private const val KEY_AYAH_LIST = "ayah_list_json"
+  private const val KEY_HIJRI_DATE = "hijri_date"
 
   private val defaultPrayerTimes = listOf(
     PrayerEntry("İmsak", "05:23"),
@@ -45,7 +47,8 @@ object HuzurWidgetUpdater {
     ayahArabic: String,
     ayahTranslation: String,
     ayahSource: String,
-    ayahListJson: String
+    ayahListJson: String,
+    hijriDate: String
   ) {
     context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
       .edit()
@@ -56,6 +59,7 @@ object HuzurWidgetUpdater {
       .putString(KEY_AYAH_TRANSLATION, ayahTranslation)
       .putString(KEY_AYAH_SOURCE, ayahSource)
       .putString(KEY_AYAH_LIST, ayahListJson)
+      .putString(KEY_HIJRI_DATE, hijriDate)
       .apply()
 
     updateAll(context)
@@ -88,22 +92,29 @@ object HuzurWidgetUpdater {
     val source = prefs.getString(KEY_SOURCE, "Diyanet vakitleri") ?: "Diyanet vakitleri"
     val state = getNextPrayerState(times)
     val date = SimpleDateFormat("d MMMM EEEE", Locale("tr", "TR")).format(Calendar.getInstance().time)
+    val hijriDate = prefs.getString(KEY_HIJRI_DATE, "") ?: ""
     val views = RemoteViews(context.packageName, R.layout.widget_prayer_times)
 
     views.setTextViewText(R.id.widget_prayer_location, location)
     views.setTextViewText(R.id.widget_prayer_source, source)
     views.setTextViewText(R.id.widget_prayer_date, date)
+    views.setTextViewText(R.id.widget_prayer_hijri_date, hijriDate)
     views.setTextViewText(R.id.widget_next_prayer_name, state.next.name)
     views.setTextViewText(R.id.widget_next_prayer_time, state.next.time)
     views.setTextViewText(R.id.widget_next_prayer_countdown, "${state.countdown} kaldı")
 
     val visible = times.take(6)
+    val cardIds = intArrayOf(R.id.widget_time_card_1, R.id.widget_time_card_2, R.id.widget_time_card_3, R.id.widget_time_card_4, R.id.widget_time_card_5, R.id.widget_time_card_6)
     val nameIds = intArrayOf(R.id.widget_time_name_1, R.id.widget_time_name_2, R.id.widget_time_name_3, R.id.widget_time_name_4, R.id.widget_time_name_5, R.id.widget_time_name_6)
     val timeIds = intArrayOf(R.id.widget_time_value_1, R.id.widget_time_value_2, R.id.widget_time_value_3, R.id.widget_time_value_4, R.id.widget_time_value_5, R.id.widget_time_value_6)
     for (index in nameIds.indices) {
       val item = visible.getOrNull(index)
+      val isCurrent = item != null && index == state.currentIndex
+      views.setInt(cardIds[index], "setBackgroundResource", if (isCurrent) R.drawable.widget_active_prayer_panel else R.drawable.widget_soft_panel)
       views.setTextViewText(nameIds[index], item?.name ?: "--")
       views.setTextViewText(timeIds[index], item?.time ?: "--:--")
+      views.setTextColor(nameIds[index], Color.parseColor(if (isCurrent) "#073D33" else "#EBD8A1"))
+      views.setTextColor(timeIds[index], Color.parseColor(if (isCurrent) "#073D33" else "#FFFFFF"))
     }
 
     views.setOnClickPendingIntent(R.id.widget_prayer_root, buildLaunchIntent(context, "huzur://prayer-times"))
@@ -174,8 +185,9 @@ object HuzurWidgetUpdater {
     val nowMinutes = now.get(Calendar.HOUR_OF_DAY) * 60 + now.get(Calendar.MINUTE)
     val indexed = times.mapIndexed { index, prayer -> IndexedPrayer(index, prayer, parseMinutes(prayer.time)) }
     val next = indexed.firstOrNull { it.minutes > nowMinutes } ?: indexed.first()
+    val current = indexed.findLast { it.minutes <= nowMinutes } ?: indexed.last()
     val remaining = if (next.minutes > nowMinutes) next.minutes - nowMinutes else 1440 - nowMinutes + next.minutes
-    return PrayerState(next.prayer, next.index, formatCountdown(remaining))
+    return PrayerState(next.prayer, next.index, current.index, formatCountdown(remaining))
   }
 
   private fun parseMinutes(time: String): Int {
@@ -194,5 +206,5 @@ object HuzurWidgetUpdater {
   private data class PrayerEntry(val name: String, val time: String)
   private data class AyahEntry(val arabic: String, val translation: String, val source: String)
   private data class IndexedPrayer(val index: Int, val prayer: PrayerEntry, val minutes: Int)
-  private data class PrayerState(val next: PrayerEntry, val nextIndex: Int, val countdown: String)
+  private data class PrayerState(val next: PrayerEntry, val nextIndex: Int, val currentIndex: Int, val countdown: String)
 }

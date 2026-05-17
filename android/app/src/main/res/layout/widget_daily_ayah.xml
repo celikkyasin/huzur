@@ -31,7 +31,7 @@
       android:letterSpacing="0.08"
       android:text="SAATLİK AYET"
       android:textColor="#EBD8A1"
-      android:textSize="11sp"
+      android:textSize="12sp"
       android:textStyle="bold" />
 
     <TextView
@@ -44,7 +44,7 @@
       android:maxLines="2"
       android:text="اِنَّ مَعَ الْعُسْرِ يُسْرًا"
       android:textColor="#FFFFFF"
-      android:textSize="25sp"
+      android:textSize="27sp"
       android:textStyle="bold" />
 
     <TextView
@@ -58,7 +58,7 @@
       android:maxLines="3"
       android:text="Şüphesiz her zorlukla beraber bir kolaylık vardır."
       android:textColor="#FFF7E5"
-      android:textSize="17sp"
+      android:textSize="18sp"
       android:textStyle="bold" />
 
     <TextView

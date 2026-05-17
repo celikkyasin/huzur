@@ -3,6 +3,7 @@ import { NativeModules, Platform } from "react-native";
 import { dailyAyahs, getDailyAyah } from "@/data/mock";
 import { useLocationStore } from "@/store/locationStore";
 import { usePrayerTimesStore } from "@/store/prayerTimesStore";
+import { getHijriDisplayDate } from "@/utils/prayerTimes";
 
 type HuzurWidgetModuleType = {
   updateWidgets?: (
@@ -12,7 +13,8 @@ type HuzurWidgetModuleType = {
     ayahArabic: string,
     ayahTranslation: string,
     ayahSource: string,
-    ayahListJson: string
+    ayahListJson: string,
+    hijriDate: string
   ) => void;
 };
 
@@ -39,7 +41,8 @@ export function HuzurWidgetSyncGate() {
       ayah.arabic,
       ayah.translation,
       ayah.source,
-      JSON.stringify(dailyAyahs.map(({ arabic, translation, source }) => ({ arabic, translation, source })))
+      JSON.stringify(dailyAyahs.map(({ arabic, translation, source }) => ({ arabic, translation, source }))),
+      getHijriDisplayDate()
     );
   }, [city, country, displayPlace, prayerTimes, sourceLabel]);
 
