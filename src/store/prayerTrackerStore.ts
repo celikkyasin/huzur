@@ -92,11 +92,31 @@ export function getPrayerProgress(records: Record<string, PrayerDayRecord>, date
 }
 
 export function getCompletionStreak(records: Record<string, PrayerDayRecord>, startDate = new Date()) {
+  const todayKey = getDateKey(startDate);
+  const recordKeys = Object.keys(records)
+    .filter((dateKey) => dateKey <= todayKey)
+    .sort((a, b) => b.localeCompare(a));
+  const latestCompleteKey = recordKeys.find((dateKey) => getPrayerProgress(records, dateKey).isComplete);
+
+  if (!latestCompleteKey) {
+    return 0;
+  }
+
+  const hasMissedAfterLatestComplete = recordKeys
+    .filter((dateKey) => dateKey > latestCompleteKey)
+    .some((dateKey) => trackedPrayers.some((prayer) => records[dateKey]?.prayers[prayer.id] === "missed"));
+
+  if (hasMissedAfterLatestComplete) {
+    return 0;
+  }
+
   let streak = 0;
+  const [year, month, day] = latestCompleteKey.split("-").map(Number);
+  const firstDate = new Date(year, month - 1, day);
 
   for (let index = 0; index < 365; index += 1) {
-    const date = new Date(startDate);
-    date.setDate(startDate.getDate() - index);
+    const date = new Date(firstDate);
+    date.setDate(firstDate.getDate() - index);
 
     if (!getPrayerProgress(records, getDateKey(date)).isComplete) {
       break;
