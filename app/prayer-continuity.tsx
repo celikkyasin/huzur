@@ -84,7 +84,7 @@ export default function PrayerContinuityScreen() {
   const selectedDateKey = getDateKey(selectedDate);
   const selectedRecord = records[selectedDateKey];
   const progress = getPrayerProgress(records, selectedDateKey);
-  const streak = getCompletionStreak(records);
+  const streak = getCompletionStreak(records, selectedDate);
 
   const timeMap = useMemo(() => new Map(prayerTimes.map((time) => [time.id, time.time])), [prayerTimes]);
 
