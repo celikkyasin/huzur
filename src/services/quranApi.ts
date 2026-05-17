@@ -27,13 +27,28 @@ type DiyanetChapter = {
 type DiyanetVerse = {
   verse_number?: number;
   verse_id_in_surah?: number;
+  chapter_id?: number;
+  chapterId?: number;
+  surah_id?: number;
+  surahId?: number;
   text?: string;
   arabic_text?: string | null;
+  verse_key?: string;
+  page_number?: number;
+  juz_number?: number;
   translation?: {
     text?: string;
   };
   arabic_script?: {
     text?: string;
+  };
+  chapter?: {
+    id?: number;
+    name_turkish?: string;
+  };
+  surah?: {
+    id?: number;
+    name_turkish?: string;
   };
 };
 
@@ -45,24 +60,23 @@ type DiyanetCollectionResponse<T> =
 
 const AL_QURAN_API_BASE = "https://api.alquran.cloud/v1";
 const TURKISH_EDITION = "tr.diyanet";
-const DIYANET_API_BASE =
-  process.env.EXPO_PUBLIC_DIB_KURAN_API_BASE_URL ?? "https://t061.diyanet.gov.tr/apigateway/acikkaynakkuran";
-const DIYANET_API_TOKEN = process.env.EXPO_PUBLIC_DIB_KURAN_API_TOKEN;
+const APP_API_URL = process.env.EXPO_PUBLIC_REWARDS_API_URL;
 
-function requireDiyanetToken() {
-  if (!DIYANET_API_TOKEN) {
-    throw new Error("Diyanet API anahtarı bulunamadı.");
-  }
+function getAppApiUrl() {
+  return APP_API_URL?.trim().replace(/\/$/, "");
 }
 
 async function fetchDiyanetJson<T>(path: string): Promise<T> {
-  requireDiyanetToken();
+  const apiUrl = getAppApiUrl();
 
-  const response = await fetch(`${DIYANET_API_BASE}${path}`, {
+  if (!apiUrl) {
+    throw new Error("Kur'an API adresi bulunamadı.");
+  }
+
+  const response = await fetch(`${apiUrl}${path}`, {
     method: "GET",
     headers: {
-      Accept: "application/json",
-      Authorization: `Bearer ${DIYANET_API_TOKEN}`
+      Accept: "application/json"
     }
   });
 
@@ -82,33 +96,51 @@ function createExplanation(surah: SurahDetail, ayahNumber: number, localExplanat
     return localExplanation;
   }
 
-  return `${surah.name} ${ayahNumber}. ayet, surenin ${surah.revelationPlace} dönemindeki ana mesajı içinde okunur. Meal üzerinde tefekkür ederken ayetin iman, kulluk, ahiret bilinci ve güzel ahlakla ilişkisine dikkat edebilirsiniz.`;
+  return `${surah.name} ${ayahNumber}. ayet, surenin ${surah.revelationPlace} dönemindeki ana mesajı içinde okunur.`;
 }
 
 function getDiyanetVerseNumber(verse: DiyanetVerse) {
   return verse.verse_number ?? verse.verse_id_in_surah;
 }
 
-function mapDiyanetVerse(surah: SurahDetail, verse: DiyanetVerse): SurahVerse {
+function getDiyanetChapterId(verse: DiyanetVerse) {
+  return verse.chapter_id ?? verse.chapterId ?? verse.surah_id ?? verse.surahId ?? verse.chapter?.id ?? verse.surah?.id;
+}
+
+function getDiyanetSurahName(verse: DiyanetVerse, localSurah?: SurahDetail) {
+  const chapterId = getDiyanetChapterId(verse);
+  const catalogSurah = chapterId ? surahDetails.find((item) => item.number === chapterId) : undefined;
+  return verse.chapter?.name_turkish ?? verse.surah?.name_turkish ?? localSurah?.name ?? catalogSurah?.name;
+}
+
+function mapDiyanetVerse(verse: DiyanetVerse, surah?: SurahDetail): SurahVerse {
   const ayahNumber = getDiyanetVerseNumber(verse) ?? 1;
-  const localVerse = surah.versesText.find((item) => item.number === ayahNumber);
+  const chapterId = getDiyanetChapterId(verse) ?? surah?.number;
+  const localSurah = surah ?? (chapterId ? surahDetails.find((item) => item.number === chapterId) : undefined);
+  const localVerse = localSurah?.versesText.find((item) => item.number === ayahNumber);
 
   return {
     number: ayahNumber,
-    arabic: verse.arabic_text ?? verse.arabic_script?.text ?? localVerse?.arabic ?? surah.arabicName,
+    arabic: verse.arabic_text ?? verse.arabic_script?.text ?? localVerse?.arabic ?? localSurah?.arabicName ?? "",
     translation: verse.text ?? verse.translation?.text ?? localVerse?.translation ?? "Türkçe meal hazırlanıyor.",
-    explanation: createExplanation(surah, ayahNumber, localVerse?.explanation)
+    explanation: localSurah ? createExplanation(localSurah, ayahNumber, localVerse?.explanation) : "",
+    surahNumber: chapterId,
+    surahName: getDiyanetSurahName(verse, localSurah),
+    verseKey: verse.verse_key ?? (chapterId ? `${chapterId}:${ayahNumber}` : undefined),
+    pageNumber: verse.page_number,
+    juzNumber: verse.juz_number
   };
 }
 
-function mapDiyanetVerses(surah: SurahDetail, verses: DiyanetVerse[]): SurahVerse[] {
+function mapDiyanetVerses(verses: DiyanetVerse[], surah?: SurahDetail): SurahVerse[] {
   return verses
     .filter((verse) => getDiyanetVerseNumber(verse))
     .filter((verse, index, self) => {
       const ayahNumber = getDiyanetVerseNumber(verse);
-      return index === self.findIndex((item) => getDiyanetVerseNumber(item) === ayahNumber);
+      const chapterId = getDiyanetChapterId(verse);
+      return index === self.findIndex((item) => getDiyanetVerseNumber(item) === ayahNumber && getDiyanetChapterId(item) === chapterId);
     })
-    .map((verse) => mapDiyanetVerse(surah, verse));
+    .map((verse) => mapDiyanetVerse(verse, surah));
 }
 
 function mapDiyanetChapter(chapter: DiyanetChapter): Surah {
@@ -128,7 +160,7 @@ function mapDiyanetChapter(chapter: DiyanetChapter): Surah {
 }
 
 async function fetchDiyanetChapters(): Promise<Surah[]> {
-  const payload = await fetchDiyanetJson<DiyanetCollectionResponse<DiyanetChapter>>("/api/v1/chapters?language=tr");
+  const payload = await fetchDiyanetJson<DiyanetCollectionResponse<DiyanetChapter>>("/quran/chapters");
   const chapters = getCollection(payload);
 
   if (!chapters.length) {
@@ -139,16 +171,14 @@ async function fetchDiyanetChapters(): Promise<Surah[]> {
 }
 
 async function fetchDiyanetSurahVerses(surah: SurahDetail): Promise<SurahVerse[]> {
-  const payload = await fetchDiyanetJson<DiyanetCollectionResponse<DiyanetVerse>>(
-    `/api/v1/chapters/${surah.number}?language_id=1`
-  );
+  const payload = await fetchDiyanetJson<DiyanetCollectionResponse<DiyanetVerse>>(`/quran/chapter?chapter=${surah.number}`);
   const verses = getCollection(payload);
 
   if (!verses.length) {
     throw new Error("Diyanet ayet verisi eksik geldi.");
   }
 
-  return mapDiyanetVerses(surah, verses);
+  return mapDiyanetVerses(verses, surah);
 }
 
 async function fetchAlQuranSurahVerses(surah: SurahDetail): Promise<SurahVerse[]> {
@@ -174,7 +204,10 @@ async function fetchAlQuranSurahVerses(surah: SurahDetail): Promise<SurahVerse[]
       number: ayahNumber,
       arabic: ayah.text.replace(/^\uFEFF/, ""),
       translation: turkishEdition.ayahs[index]?.text ?? localVerse?.translation ?? "Türkçe meal hazırlanıyor.",
-      explanation: createExplanation(surah, ayahNumber, localVerse?.explanation)
+      explanation: createExplanation(surah, ayahNumber, localVerse?.explanation),
+      surahNumber: surah.number,
+      surahName: surah.name,
+      verseKey: `${surah.number}:${ayahNumber}`
     };
   });
 }
@@ -196,13 +229,11 @@ export async function fetchSurahVerses(surah: SurahDetail): Promise<SurahVerse[]
 }
 
 export async function fetchJuzVerses(juzId: number, surah: SurahDetail = surahDetails[0]): Promise<SurahVerse[]> {
-  const payload = await fetchDiyanetJson<DiyanetCollectionResponse<DiyanetVerse>>(`/api/v1/juz/${juzId}?language_id=1`);
-  return mapDiyanetVerses(surah, getCollection(payload));
+  const payload = await fetchDiyanetJson<DiyanetCollectionResponse<DiyanetVerse>>(`/quran/juz?juz=${juzId}`);
+  return mapDiyanetVerses(getCollection(payload), surah);
 }
 
 export async function fetchPageVerses(pageNumber: number, surah: SurahDetail = surahDetails[0]): Promise<SurahVerse[]> {
-  const payload = await fetchDiyanetJson<DiyanetCollectionResponse<DiyanetVerse>>(
-    `/api/v1/verses/page/${pageNumber}?language_id=1`
-  );
-  return mapDiyanetVerses(surah, getCollection(payload));
+  const payload = await fetchDiyanetJson<DiyanetCollectionResponse<DiyanetVerse>>(`/quran/page?page=${pageNumber}`);
+  return mapDiyanetVerses(getCollection(payload), surah);
 }

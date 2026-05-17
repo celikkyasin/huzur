@@ -45,6 +45,22 @@
       "destination": "/api/friday-sermons?route=sync"
     },
     {
+      "source": "/quran/chapters",
+      "destination": "/api/quran?route=chapters"
+    },
+    {
+      "source": "/quran/chapter",
+      "destination": "/api/quran?route=chapter"
+    },
+    {
+      "source": "/quran/juz",
+      "destination": "/api/quran?route=juz"
+    },
+    {
+      "source": "/quran/page",
+      "destination": "/api/quran?route=page"
+    },
+    {
       "source": "/names-of-allah/config",
       "destination": "/api/names-of-allah?route=config"
     },
@@ -58,7 +74,7 @@
     },
     {
       "source": "/leaderboard",
-      "destination": "/api/leaderboard"
+      "destination": "/api/rewards/config?route=leaderboard"
     }
   ],
   "functions": {

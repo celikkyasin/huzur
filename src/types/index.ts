@@ -44,6 +44,11 @@ export type SurahVerse = {
   arabic: string;
   translation: string;
   explanation: string;
+  surahNumber?: number;
+  surahName?: string;
+  verseKey?: string;
+  pageNumber?: number;
+  juzNumber?: number;
 };
 
 export type SurahDetail = Surah & {

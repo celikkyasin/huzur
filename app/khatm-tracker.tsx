@@ -1,16 +1,18 @@
 import { useEffect, useMemo, useState } from "react";
-import { Modal, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { ActivityIndicator, Modal, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { AppHeader } from "@/components/AppHeader";
 import { Card } from "@/components/ui/Card";
 import { ScreenContainer } from "@/components/ui/ScreenContainer";
+import { fetchJuzVerses } from "@/services/quranApi";
 import { getKhatmProgress, KHATM_TOTAL_JUZ, useKhatmTrackerStore, type KhatmJuzStatus } from "@/store/khatmTrackerStore";
 import { useRewardStore } from "@/store/rewardStore";
 import { colors, radii, typography } from "@/theme";
+import type { SurahVerse } from "@/types";
 
 const statusOptions: Array<{ status: KhatmJuzStatus; label: string; icon: keyof typeof Ionicons.glyphMap }> = [
   { status: "unread", label: "Okunmadı", icon: "ellipse-outline" },
-  { status: "reading", label: "Devam ediyor", icon: "book-outline" },
+  { status: "reading", label: "Devam", icon: "book-outline" },
   { status: "done", label: "Okundu", icon: "checkmark-circle" }
 ];
 
@@ -22,15 +24,14 @@ const statusColors: Record<KhatmJuzStatus, string> = {
 
 function formatStartDate(value: string) {
   const date = new Date(value);
-
-  if (Number.isNaN(date.getTime())) {
-    return "-";
-  }
-
-  return date.toLocaleDateString("tr-TR", { day: "numeric", month: "long", year: "numeric" });
+  return Number.isNaN(date.getTime()) ? "-" : date.toLocaleDateString("tr-TR", { day: "numeric", month: "long", year: "numeric" });
 }
 
 export default function KhatmTrackerScreen() {
+  const [selectedJuz, setSelectedJuz] = useState(1);
+  const [verses, setVerses] = useState<SurahVerse[]>([]);
+  const [isLoadingVerses, setIsLoadingVerses] = useState(true);
+  const [verseError, setVerseError] = useState("");
   const [completionModalVisible, setCompletionModalVisible] = useState(false);
   const [resetModalVisible, setResetModalVisible] = useState(false);
   const statuses = useKhatmTrackerStore((state) => state.statuses);
@@ -43,10 +44,39 @@ export default function KhatmTrackerScreen() {
   const awardReward = useRewardStore((state) => state.awardReward);
   const progress = getKhatmProgress(statuses);
   const juzList = useMemo(() => Array.from({ length: KHATM_TOTAL_JUZ }, (_, index) => index + 1), []);
+  const selectedStatus = statuses[selectedJuz] ?? "unread";
 
   useEffect(() => {
     void hydrateKhatmTracker();
   }, [hydrateKhatmTracker]);
+
+  useEffect(() => {
+    let isMounted = true;
+    setIsLoadingVerses(true);
+    setVerseError("");
+    setVerses([]);
+
+    fetchJuzVerses(selectedJuz)
+      .then((items) => {
+        if (isMounted) {
+          setVerses(items);
+        }
+      })
+      .catch(() => {
+        if (isMounted) {
+          setVerseError("Cüz verisi alınamadı. Diyanet Kur'an API ayarını kontrol edin.");
+        }
+      })
+      .finally(() => {
+        if (isMounted) {
+          setIsLoadingVerses(false);
+        }
+      });
+
+    return () => {
+      isMounted = false;
+    };
+  }, [selectedJuz]);
 
   useEffect(() => {
     if (!progress.isComplete || completionRewarded) {
@@ -70,7 +100,7 @@ export default function KhatmTrackerScreen() {
 
   return (
     <ScreenContainer>
-      <AppHeader title="Hatim Takibi" />
+      <AppHeader title="Hatim Oku" />
       <Card variant="emerald" style={styles.summaryCard}>
         <View style={styles.summaryTop}>
           <View style={styles.summaryTextWrap}>
@@ -88,52 +118,92 @@ export default function KhatmTrackerScreen() {
       </Card>
 
       <View style={styles.toolbar}>
-        <Text style={styles.sectionTitle}>30 Cüz Listesi</Text>
+        <Text style={styles.sectionTitle}>Cüz Seç</Text>
         <Pressable accessibilityRole="button" onPress={() => setResetModalVisible(true)} style={styles.resetButton}>
           <Ionicons name="refresh" size={16} color={colors.danger} />
           <Text style={styles.resetText}>Sıfırla</Text>
         </Pressable>
       </View>
 
-      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.list}>
+      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.juzSelector}>
         {juzList.map((juz) => {
-          const currentStatus = statuses[juz] ?? "unread";
+          const status = statuses[juz] ?? "unread";
+          const isSelected = selectedJuz === juz;
 
           return (
-            <Card key={juz} style={styles.juzCard}>
-              <View style={styles.juzHeader}>
-                <View style={[styles.juzNumber, { backgroundColor: currentStatus === "unread" ? colors.emeraldSoft : statusColors[currentStatus] }]}>
-                  <Text style={[styles.juzNumberText, currentStatus !== "unread" && styles.activeJuzNumberText]}>{juz}</Text>
-                </View>
-                <View style={styles.juzTextWrap}>
-                  <Text style={styles.juzTitle}>{juz}. Cüz</Text>
-                  <Text style={styles.juzSubtitle}>{statusOptions.find((item) => item.status === currentStatus)?.label}</Text>
-                </View>
-                {currentStatus === "done" ? <Ionicons name="checkmark-circle" size={22} color={colors.emerald} /> : null}
-              </View>
-
-              <View style={styles.statusRow}>
-                {statusOptions.map((option) => {
-                  const isActive = currentStatus === option.status;
-                  const activeColor = statusColors[option.status];
-
-                  return (
-                    <Pressable
-                      key={option.status}
-                      accessibilityRole="button"
-                      onPress={() => void setJuzStatus(juz, option.status)}
-                      style={[styles.statusButton, isActive && { backgroundColor: activeColor, borderColor: activeColor }]}
-                    >
-                      <Ionicons name={option.icon} size={16} color={isActive && option.status !== "unread" ? colors.white : colors.emerald} />
-                      <Text style={[styles.statusText, isActive && option.status !== "unread" && styles.activeStatusText]}>{option.label}</Text>
-                    </Pressable>
-                  );
-                })}
-              </View>
-            </Card>
+            <Pressable
+              key={juz}
+              accessibilityRole="button"
+              onPress={() => setSelectedJuz(juz)}
+              style={[styles.juzPill, isSelected && styles.selectedJuzPill, status === "done" && styles.doneJuzPill]}
+            >
+              <Text style={[styles.juzPillText, (isSelected || status === "done") && styles.activeJuzPillText]}>{juz}</Text>
+            </Pressable>
           );
         })}
       </ScrollView>
+
+      <Card style={styles.readerCard}>
+        <View style={styles.readerHeader}>
+          <View>
+            <Text style={styles.readerEyebrow}>Seçili cüz</Text>
+            <Text style={styles.readerTitle}>{selectedJuz}. Cüz</Text>
+          </View>
+          <View style={[styles.statusBadge, { backgroundColor: selectedStatus === "unread" ? colors.emeraldSoft : statusColors[selectedStatus] }]}>
+            <Text style={[styles.statusBadgeText, selectedStatus !== "unread" && styles.activeStatusBadgeText]}>
+              {statusOptions.find((item) => item.status === selectedStatus)?.label}
+            </Text>
+          </View>
+        </View>
+
+        <View style={styles.statusRow}>
+          {statusOptions.map((option) => {
+            const isActive = selectedStatus === option.status;
+            const activeColor = statusColors[option.status];
+
+            return (
+              <Pressable
+                key={option.status}
+                accessibilityRole="button"
+                onPress={() => void setJuzStatus(selectedJuz, option.status)}
+                style={[styles.statusButton, isActive && { backgroundColor: activeColor, borderColor: activeColor }]}
+              >
+                <Ionicons name={option.icon} size={16} color={isActive && option.status !== "unread" ? colors.white : colors.emerald} />
+                <Text style={[styles.statusText, isActive && option.status !== "unread" && styles.activeStatusText]}>{option.label}</Text>
+              </Pressable>
+            );
+          })}
+        </View>
+      </Card>
+
+      {isLoadingVerses ? (
+        <Card style={styles.loadingCard}>
+          <ActivityIndicator color={colors.emerald} />
+          <Text style={styles.loadingText}>Cüz hazırlanıyor...</Text>
+        </Card>
+      ) : null}
+
+      {verseError ? (
+        <Card style={styles.errorCard}>
+          <Ionicons name="cloud-offline-outline" size={20} color={colors.emerald} />
+          <Text style={styles.errorText}>{verseError}</Text>
+        </Card>
+      ) : null}
+
+      <View style={styles.verseList}>
+        {verses.map((verse, index) => (
+          <Card key={`${verse.verseKey ?? verse.number}-${index}`} style={styles.verseCard}>
+            <View style={styles.verseHeader}>
+              <View style={styles.verseNumber}>
+                <Text style={styles.verseNumberText}>{verse.verseKey ?? verse.number}</Text>
+              </View>
+              <Text style={styles.surahName}>{verse.surahName ?? "Kur'an-ı Kerim"}</Text>
+            </View>
+            <Text style={styles.arabicVerse}>{verse.arabic}</Text>
+            <Text style={styles.translation}>{verse.translation}</Text>
+          </Card>
+        ))}
+      </View>
 
       <Modal transparent visible={completionModalVisible} animationType="fade" onRequestClose={() => setCompletionModalVisible(false)}>
         <View style={styles.modalBackdrop}>
@@ -260,46 +330,71 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: "900"
   },
-  list: {
-    gap: 12,
-    paddingBottom: 22
+  juzSelector: {
+    gap: 8,
+    paddingBottom: 14
   },
-  juzCard: {
-    gap: 14
-  },
-  juzHeader: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 12
-  },
-  juzNumber: {
+  juzPill: {
     width: 48,
     height: 48,
     borderRadius: radii.round,
     alignItems: "center",
-    justifyContent: "center"
+    justifyContent: "center",
+    backgroundColor: colors.paper,
+    borderWidth: 1,
+    borderColor: colors.line
   },
-  juzNumberText: {
+  selectedJuzPill: {
+    backgroundColor: colors.emerald,
+    borderColor: colors.emerald
+  },
+  doneJuzPill: {
+    backgroundColor: colors.gold,
+    borderColor: colors.gold
+  },
+  juzPillText: {
     color: colors.emerald,
-    fontSize: 18,
     fontWeight: "900"
   },
-  activeJuzNumberText: {
+  activeJuzPillText: {
     color: colors.white
   },
-  juzTextWrap: {
-    flex: 1
+  readerCard: {
+    gap: 14,
+    marginBottom: 14
   },
-  juzTitle: {
-    color: colors.ink,
-    fontSize: 17,
+  readerHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: 12
+  },
+  readerEyebrow: {
+    color: colors.gold,
+    fontSize: 12,
     fontWeight: "900"
   },
-  juzSubtitle: {
-    color: colors.muted,
+  readerTitle: {
+    color: colors.ink,
     marginTop: 3,
+    fontSize: 22,
+    fontFamily: typography.title,
+    fontWeight: "900"
+  },
+  statusBadge: {
+    minHeight: 34,
+    borderRadius: radii.round,
+    paddingHorizontal: 12,
+    alignItems: "center",
+    justifyContent: "center"
+  },
+  statusBadgeText: {
+    color: colors.emerald,
     fontSize: 12,
-    fontWeight: "800"
+    fontWeight: "900"
+  },
+  activeStatusBadgeText: {
+    color: colors.white
   },
   statusRow: {
     flexDirection: "row",
@@ -325,6 +420,74 @@ const styles = StyleSheet.create({
   },
   activeStatusText: {
     color: colors.white
+  },
+  loadingCard: {
+    marginBottom: 14,
+    alignItems: "center",
+    gap: 10
+  },
+  loadingText: {
+    color: colors.muted,
+    fontWeight: "800"
+  },
+  errorCard: {
+    marginBottom: 14,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10
+  },
+  errorText: {
+    color: colors.ink,
+    flex: 1,
+    lineHeight: 20,
+    fontWeight: "700"
+  },
+  verseList: {
+    gap: 12,
+    paddingBottom: 22
+  },
+  verseCard: {
+    gap: 14
+  },
+  verseHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: 10
+  },
+  verseNumber: {
+    minWidth: 44,
+    height: 32,
+    borderRadius: radii.round,
+    paddingHorizontal: 10,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: colors.emeraldSoft
+  },
+  verseNumberText: {
+    color: colors.emerald,
+    fontSize: 12,
+    fontWeight: "900"
+  },
+  surahName: {
+    color: colors.muted,
+    flex: 1,
+    textAlign: "right",
+    fontSize: 12,
+    fontWeight: "800"
+  },
+  arabicVerse: {
+    color: colors.emerald,
+    textAlign: "right",
+    fontSize: 27,
+    lineHeight: 48,
+    fontWeight: "800"
+  },
+  translation: {
+    color: colors.ink,
+    fontSize: 15,
+    lineHeight: 23,
+    fontWeight: "800"
   },
   modalBackdrop: {
     flex: 1,
