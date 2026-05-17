@@ -74,6 +74,7 @@ function canMarkPrayer(date: Date, time?: string) {
 export default function PrayerContinuityScreen() {
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [completionModalVisible, setCompletionModalVisible] = useState(false);
+  const [pendingMissedPrayer, setPendingMissedPrayer] = useState<TrackedPrayerId | null>(null);
   const records = usePrayerTrackerStore((state) => state.records);
   const hydratePrayerTracker = usePrayerTrackerStore((state) => state.hydratePrayerTracker);
   const markPrayer = usePrayerTrackerStore((state) => state.markPrayer);
@@ -84,7 +85,7 @@ export default function PrayerContinuityScreen() {
   const selectedDateKey = getDateKey(selectedDate);
   const selectedRecord = records[selectedDateKey];
   const progress = getPrayerProgress(records, selectedDateKey);
-  const streak = getCompletionStreak(records, selectedDate);
+  const streak = getCompletionStreak(records);
 
   const timeMap = useMemo(() => new Map(prayerTimes.map((time) => [time.id, time.time])), [prayerTimes]);
 
@@ -113,6 +114,26 @@ export default function PrayerContinuityScreen() {
         ...rewards.dayReward
       });
       setCompletionModalVisible(true);
+    }
+  };
+
+  const handlePrayerStatusPress = (prayerId: TrackedPrayerId, status: PrayerCompletionStatus) => {
+    const previousStatus = records[selectedDateKey]?.prayers[prayerId];
+
+    if (status === "missed" && previousStatus !== "missed" && streak > 0) {
+      setPendingMissedPrayer(prayerId);
+      return;
+    }
+
+    void updatePrayer(prayerId, status);
+  };
+
+  const confirmMissedPrayer = () => {
+    const prayerId = pendingMissedPrayer;
+    setPendingMissedPrayer(null);
+
+    if (prayerId) {
+      void updatePrayer(prayerId, "missed");
     }
   };
 
@@ -181,7 +202,7 @@ export default function PrayerContinuityScreen() {
                       key={option.status}
                       accessibilityRole="button"
                       disabled={!isPrayerEnabled}
-                      onPress={() => void updatePrayer(prayer.id, option.status)}
+                      onPress={() => handlePrayerStatusPress(prayer.id, option.status)}
                       style={[
                         styles.statusButton,
                         !isPrayerEnabled && styles.disabledStatusButton,
@@ -216,6 +237,26 @@ export default function PrayerContinuityScreen() {
             </View>
             <Pressable accessibilityRole="button" onPress={() => setCompletionModalVisible(false)} style={styles.modalButton}>
               <Text style={styles.modalButtonText}>Tamam</Text>
+            </Pressable>
+          </View>
+        </View>
+      </Modal>
+
+      <Modal transparent visible={pendingMissedPrayer !== null} animationType="fade" onRequestClose={() => setPendingMissedPrayer(null)}>
+        <View style={styles.modalBackdrop}>
+          <View style={styles.completionModal}>
+            <View style={styles.modalGlow} />
+            <View style={styles.modalIconWrap}>
+              <Ionicons name="flame" size={42} color={colors.gold} />
+            </View>
+            <Text style={styles.modalEyebrow}>SERİN DEVAM EDİYOR</Text>
+            <Text style={styles.modalTitle}>{streak} gündür tüm namaz vakitlerini tamamlıyorsun</Text>
+            <Text style={styles.modalText}>Serini bozma. Vaktin varsa namazını kılmaya devam et.</Text>
+            <Pressable accessibilityRole="button" onPress={() => setPendingMissedPrayer(null)} style={styles.modalButton}>
+              <Text style={styles.modalButtonText}>Devam edeceğim</Text>
+            </Pressable>
+            <Pressable accessibilityRole="button" onPress={confirmMissedPrayer} style={styles.modalSecondaryButton}>
+              <Text style={styles.modalSecondaryButtonText}>Yine de kılmadım işaretle</Text>
             </Pressable>
           </View>
         </View>
@@ -476,6 +517,17 @@ const styles = StyleSheet.create({
   },
   modalButtonText: {
     color: colors.ink,
+    fontWeight: "900"
+  },
+  modalSecondaryButton: {
+    minHeight: 42,
+    marginTop: 10,
+    alignItems: "center",
+    justifyContent: "center",
+    paddingHorizontal: 14
+  },
+  modalSecondaryButtonText: {
+    color: "rgba(255,255,255,0.74)",
     fontWeight: "900"
   }
 });
