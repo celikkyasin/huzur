@@ -24,6 +24,38 @@ const statusColors: Record<KhatmJuzStatus, string> = {
 };
 
 const KHATM_PLAYLIST_ID = "PLbxwMdSNkTauJdKskkVznM4fV3aErgPJf";
+const KHATM_JUZ_VIDEO_IDS: Record<number, string> = {
+  1: "VF00NG6NL9c",
+  2: "oZr5IkpPbPI",
+  3: "KtBh3CjmGac",
+  4: "JJ7qtssGkgk",
+  5: "CHUjjuU8E6c",
+  6: "tbNN9xHxwBw",
+  7: "pGUD_tMZg_U",
+  8: "kssvuRn7MJg",
+  9: "EAExMVN2obQ",
+  10: "72f1kem9uNQ",
+  11: "Zh2pM60Kkxk",
+  12: "qdMSmaJyxiQ",
+  13: "c6BMSEVlEzM",
+  14: "LtonjvsEVw8",
+  15: "eqmix2_HO8E",
+  16: "A41-lixCimI",
+  17: "UH6k_6_xp-Q",
+  18: "VQFghdcku0s",
+  19: "WtncL85-HSM",
+  20: "a3KgewbRX_Q",
+  21: "BZzvTPUTIuA",
+  22: "hB5cRghRTjs",
+  23: "WDRKFsdaexs",
+  24: "iOuWvqTR5zA",
+  25: "sBnzkrt-I0g",
+  26: "PpxzXjS7ggE",
+  27: "wOTJzQwSb3A",
+  28: "40OMH4CRX9c",
+  29: "s8QNOrn2bmM",
+  30: "EY7F3NevYbI"
+};
 
 function formatStartDate(value: string) {
   const date = new Date(value);
@@ -31,8 +63,8 @@ function formatStartDate(value: string) {
 }
 
 function getKhatmYoutubeEmbedHtml(juz: number) {
-  const index = Math.max(0, juz - 1);
-  const videoUrl = `https://www.youtube-nocookie.com/embed/videoseries?list=${KHATM_PLAYLIST_ID}&index=${index}&playsinline=1&rel=0&modestbranding=1&controls=1&fs=1&iv_load_policy=3`;
+  const videoId = KHATM_JUZ_VIDEO_IDS[juz] ?? KHATM_JUZ_VIDEO_IDS[1];
+  const videoUrl = `https://www.youtube-nocookie.com/embed/${videoId}?list=${KHATM_PLAYLIST_ID}&playsinline=1&rel=0&modestbranding=1&controls=1&fs=1&iv_load_policy=3`;
 
   return `<!doctype html>
 <html>
@@ -105,7 +137,7 @@ export default function KhatmTrackerScreen() {
       })
       .catch(() => {
         if (isMounted) {
-          setVerseError("Cüz verisi alınamadı. Diyanet Kur'an API ayarını kontrol edin.");
+          setVerseError("Cüz verisi alınamadı. İnternet bağlantısını kontrol edip tekrar deneyin.");
         }
       })
       .finally(() => {

@@ -77,6 +77,17 @@ function getAppApiUrl() {
   return APP_API_URL?.trim().replace(/\/$/, "");
 }
 
+function buildApiRequestUrl(apiUrl: string, path: string) {
+  if (path.startsWith("/quran/")) {
+    const [routePart, query = ""] = path.replace(/^\/quran\//, "").split("?");
+    const params = new URLSearchParams(query);
+    params.set("route", routePart);
+    return `${apiUrl}/api/quran?${params.toString()}`;
+  }
+
+  return `${apiUrl}${path}`;
+}
+
 async function fetchDiyanetJson<T>(path: string): Promise<T> {
   const apiUrl = getAppApiUrl();
 
@@ -84,7 +95,7 @@ async function fetchDiyanetJson<T>(path: string): Promise<T> {
     throw new Error("Kur'an API adresi bulunamadı.");
   }
 
-  const response = await fetch(`${apiUrl}${path}`, {
+  const response = await fetch(buildApiRequestUrl(apiUrl, path), {
     method: "GET",
     headers: {
       Accept: "application/json"
@@ -170,6 +181,43 @@ async function fetchAlQuranJuzArabic(juzId: number) {
   }
 
   return new Map(ayahs.map((ayah) => [`${ayah.surah?.number}:${ayah.numberInSurah}`, ayah.text.replace(/^\uFEFF/, "")]));
+}
+
+async function fetchAlQuranJuzVerses(juzId: number): Promise<SurahVerse[]> {
+  const [arabicResponse, turkishResponse] = await Promise.all([
+    fetch(`${AL_QURAN_API_BASE}/juz/${juzId}/quran-uthmani`),
+    fetch(`${AL_QURAN_API_BASE}/juz/${juzId}/${TURKISH_EDITION}`)
+  ]);
+
+  if (!arabicResponse.ok || !turkishResponse.ok) {
+    throw new Error("Cüz verisi alınamadı.");
+  }
+
+  const arabicPayload = (await arabicResponse.json()) as QuranJuzResponse;
+  const turkishPayload = (await turkishResponse.json()) as QuranJuzResponse;
+  const arabicAyahs = arabicPayload.data?.ayahs ?? [];
+  const turkishAyahs = turkishPayload.data?.ayahs ?? [];
+
+  if (arabicPayload.code !== 200 || turkishPayload.code !== 200 || !arabicAyahs.length || !turkishAyahs.length) {
+    throw new Error("Cüz verisi eksik geldi.");
+  }
+
+  return arabicAyahs.map((ayah, index) => {
+    const surahNumber = ayah.surah?.number;
+    const localSurah = surahNumber ? surahDetails.find((item) => item.number === surahNumber) : undefined;
+    const ayahNumber = ayah.numberInSurah;
+
+    return {
+      number: ayahNumber,
+      arabic: ayah.text.replace(/^\uFEFF/, ""),
+      translation: turkishAyahs[index]?.text ?? "Türkçe meal hazırlanıyor.",
+      explanation: "",
+      surahNumber,
+      surahName: localSurah?.name ?? ayah.surah?.name,
+      verseKey: surahNumber ? `${surahNumber}:${ayahNumber}` : undefined,
+      juzNumber: juzId
+    };
+  });
 }
 
 function mapDiyanetChapter(chapter: DiyanetChapter): Surah {
@@ -258,8 +306,14 @@ export async function fetchSurahVerses(surah: SurahDetail): Promise<SurahVerse[]
 }
 
 export async function fetchJuzVerses(juzId: number, surah?: SurahDetail): Promise<SurahVerse[]> {
-  const payload = await fetchDiyanetJson<DiyanetCollectionResponse<DiyanetVerse>>(`/quran/juz?juz=${juzId}`);
-  const verses = mapDiyanetVerses(getCollection(payload), surah);
+  let verses: SurahVerse[];
+
+  try {
+    const payload = await fetchDiyanetJson<DiyanetCollectionResponse<DiyanetVerse>>(`/quran/juz?juz=${juzId}`);
+    verses = mapDiyanetVerses(getCollection(payload), surah);
+  } catch {
+    return fetchAlQuranJuzVerses(juzId);
+  }
 
   try {
     const cleanArabicByKey = await fetchAlQuranJuzArabic(juzId);

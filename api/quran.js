@@ -30,7 +30,8 @@ async function fetchDiyanet(path) {
   const response = await fetch(`${DIB_KURAN_API_BASE_URL}${path}`, {
     headers: {
       Accept: "application/json",
-      Authorization: `Bearer ${DIB_KURAN_API_TOKEN}`
+      Authorization: `Bearer ${DIB_KURAN_API_TOKEN}`,
+      "X-API-Key": DIB_KURAN_API_TOKEN
     }
   });
 
