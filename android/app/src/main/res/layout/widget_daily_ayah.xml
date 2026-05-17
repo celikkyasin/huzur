@@ -11,9 +11,10 @@
     android:scaleType="centerCrop"
     android:src="@drawable/widget_prayer_hero_bg" />
 
-  <View
+  <TextView
     android:layout_width="match_parent"
     android:layout_height="match_parent"
+    android:text=""
     android:background="@drawable/widget_image_scrim" />
 
   <LinearLayout
