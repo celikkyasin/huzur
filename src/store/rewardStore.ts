@@ -6,7 +6,7 @@ const REWARD_STORAGE_KEY = "huzur.rewards.v1";
 const MAX_HISTORY_ITEMS = 30;
 export const DAILY_REWARDED_AD_LIMIT = 15;
 
-export type RewardAction = "dhikr33" | "dhikr99" | "fridayShare" | "surahListen" | "rewardedAd" | "prayerDone" | "prayerCompleteDay";
+export type RewardAction = "dhikr33" | "dhikr99" | "fridayShare" | "surahListen" | "rewardedAd" | "prayerDone" | "prayerCompleteDay" | "khatmComplete";
 
 export type RewardTransaction = {
   id: string;

@@ -18,6 +18,7 @@ type MenuItem = {
 const menuItems: MenuItem[] = [
   { title: "Namaz Devamlılığı", subtitle: "Gün gün 5 vakit namaz takibi", icon: "calendar", route: "/prayer-continuity", badge: "Yeni" },
   { title: "Kaza Namazı Takibi", subtitle: "Kalan kaza namazlarını düzenli azalt", icon: "repeat", route: "/qada-prayers", badge: "Yeni" },
+  { title: "Hatim Takibi", subtitle: "30 cüz üzerinden hatim ilerlemeni takip et", icon: "book", route: "/khatm-tracker", badge: "Yeni" },
   { title: "Allah'ın 99 İsmi", subtitle: "Görsel kartlar ve anlamları", icon: "sparkles", route: "/names-of-allah", badge: "Yeni" },
   { title: "Cuma Hutbeleri", subtitle: "Haftalık hutbeleri oku", icon: "document-text", route: "/friday-sermons", badge: "Yeni" },
   { title: "Puan Tablosu ve Ödüller", subtitle: "Sıralama, ödüller ve başvuru alanı", icon: "trophy", route: "/rewards" },

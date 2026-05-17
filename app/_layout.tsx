@@ -39,6 +39,7 @@ export default function RootLayout() {
         <Stack.Screen name="friday-messages" />
         <Stack.Screen name="names-of-allah" />
         <Stack.Screen name="friday-sermons" />
+        <Stack.Screen name="khatm-tracker" />
         <Stack.Screen name="prayer-continuity" />
         <Stack.Screen name="qada-prayers" />
         <Stack.Screen name="rewards" />
