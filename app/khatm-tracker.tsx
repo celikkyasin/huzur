@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { ActivityIndicator, Modal, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
+import { WebView } from "react-native-webview";
 import { AppHeader } from "@/components/AppHeader";
 import { Card } from "@/components/ui/Card";
 import { ScreenContainer } from "@/components/ui/ScreenContainer";
@@ -22,9 +23,48 @@ const statusColors: Record<KhatmJuzStatus, string> = {
   done: colors.emerald
 };
 
+const KHATM_PLAYLIST_ID = "PLbxwMdSNkTauJdKskkVznM4fV3aErgPJf";
+
 function formatStartDate(value: string) {
   const date = new Date(value);
   return Number.isNaN(date.getTime()) ? "-" : date.toLocaleDateString("tr-TR", { day: "numeric", month: "long", year: "numeric" });
+}
+
+function getKhatmYoutubeEmbedHtml(juz: number) {
+  const index = Math.max(0, juz - 1);
+  const videoUrl = `https://www.youtube-nocookie.com/embed/videoseries?list=${KHATM_PLAYLIST_ID}&index=${index}&playsinline=1&rel=0&modestbranding=1&controls=1&fs=1&iv_load_policy=3`;
+
+  return `<!doctype html>
+<html>
+  <head>
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+    <style>
+      html, body {
+        margin: 0;
+        padding: 0;
+        width: 100%;
+        height: 100%;
+        overflow: hidden;
+        background: #10231f;
+      }
+      iframe {
+        position: fixed;
+        inset: 0;
+        width: 100%;
+        height: 100%;
+        border: 0;
+      }
+    </style>
+  </head>
+  <body>
+    <iframe
+      src="${videoUrl}"
+      title="${juz}. Cüz tilaveti"
+      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+      allowfullscreen>
+    </iframe>
+  </body>
+</html>`;
 }
 
 export default function KhatmTrackerScreen() {
@@ -45,6 +85,7 @@ export default function KhatmTrackerScreen() {
   const progress = getKhatmProgress(statuses);
   const juzList = useMemo(() => Array.from({ length: KHATM_TOTAL_JUZ }, (_, index) => index + 1), []);
   const selectedStatus = statuses[selectedJuz] ?? "unread";
+  const selectedJuzVideoHtml = useMemo(() => getKhatmYoutubeEmbedHtml(selectedJuz), [selectedJuz]);
 
   useEffect(() => {
     void hydrateKhatmTracker();
@@ -173,6 +214,32 @@ export default function KhatmTrackerScreen() {
               </Pressable>
             );
           })}
+        </View>
+      </Card>
+
+      <Card style={styles.videoCard}>
+        <View style={styles.videoHeader}>
+          <View style={styles.videoTitleRow}>
+            <Ionicons name="logo-youtube" size={20} color="#d93025" />
+            <Text style={styles.videoTitle}>{selectedJuz}. Cüz tilaveti</Text>
+          </View>
+          <View style={styles.videoBadge}>
+            <Text style={styles.videoBadgeText}>YouTube</Text>
+          </View>
+        </View>
+        <View style={styles.videoFrame}>
+          <WebView
+            key={selectedJuz}
+            source={{ html: selectedJuzVideoHtml, baseUrl: "https://www.youtube-nocookie.com" }}
+            allowsFullscreenVideo
+            allowsInlineMediaPlayback
+            androidLayerType="hardware"
+            javaScriptEnabled
+            domStorageEnabled
+            mediaPlaybackRequiresUserAction
+            setSupportMultipleWindows={false}
+            style={styles.videoWebView}
+          />
         </View>
       </Card>
 
@@ -420,6 +487,52 @@ const styles = StyleSheet.create({
   },
   activeStatusText: {
     color: colors.white
+  },
+  videoCard: {
+    gap: 12,
+    marginBottom: 14,
+    padding: 12,
+    backgroundColor: colors.emerald
+  },
+  videoHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: 10
+  },
+  videoTitleRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    flex: 1,
+    gap: 8
+  },
+  videoTitle: {
+    color: colors.white,
+    fontSize: 15,
+    fontWeight: "900"
+  },
+  videoBadge: {
+    minHeight: 28,
+    borderRadius: radii.round,
+    paddingHorizontal: 10,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "rgba(255,255,255,0.12)"
+  },
+  videoBadgeText: {
+    color: colors.gold,
+    fontSize: 11,
+    fontWeight: "900"
+  },
+  videoFrame: {
+    height: 190,
+    overflow: "hidden",
+    borderRadius: radii.lg,
+    backgroundColor: "#10231f"
+  },
+  videoWebView: {
+    flex: 1,
+    backgroundColor: "#10231f"
   },
   loadingCard: {
     marginBottom: 14,
