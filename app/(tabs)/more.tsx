@@ -21,6 +21,11 @@ const menuItems: MenuItem[] = [
   { title: "Hatim Oku", subtitle: "30 cüz üzerinden Kur'an oku ve ilerlemeni takip et", icon: "book", route: "/khatm-tracker", badge: "Yeni" },
   { title: "Allah'ın 99 İsmi", subtitle: "Görsel kartlar ve anlamları", icon: "sparkles", route: "/names-of-allah", badge: "Yeni" },
   { title: "Cuma Hutbeleri", subtitle: "Haftalık hutbeleri oku", icon: "document-text", route: "/friday-sermons", badge: "Yeni" },
+  { title: "Zekat Hesapla", subtitle: "Zekat ve fitre hesabı", icon: "calculator", route: "/zakat-calculator", badge: "Yeni" },
+  { title: "Dini Günler", subtitle: "2026 Diyanet dini günler takvimi", icon: "calendar-number", route: "/religious-days", badge: "Yeni" },
+  { title: "Kur'an Radyo", subtitle: "Diyanet Kur'an Radyo canlı dinle", icon: "radio", route: "/quran-radio", badge: "Yeni" },
+  { title: "Kabe Canlı", subtitle: "Kabe'den canlı yayın", icon: "videocam", route: "/kaaba-live", badge: "Yeni" },
+  { title: "Dua İste", subtitle: "Dua talebi oluştur ve takip et", icon: "heart", route: "/dua-requests", badge: "Yeni" },
   { title: "Puan Tablosu ve Ödüller", subtitle: "Sıralama, ödüller ve başvuru alanı", icon: "trophy", route: "/rewards" },
   { title: "Ayarlar", subtitle: "Bildirimler, profil ve uygulama tercihleri", icon: "settings", route: "/settings" }
 ];
@@ -38,15 +43,15 @@ export default function MoreScreen() {
               <Ionicons name={item.icon} size={23} color={colors.emerald} />
             </View>
             <View style={styles.textWrap}>
-              <View style={styles.titleRow}>
-                <Text style={styles.itemTitle}>{item.title}</Text>
-                {item.badge ? (
-                  <View style={styles.badge}>
-                    <Text style={styles.badgeText}>{item.badge}</Text>
-                  </View>
-                ) : null}
-              </View>
+              <Text style={styles.itemTitle}>{item.title}</Text>
               <Text style={styles.itemSubtitle}>{item.subtitle}</Text>
+            </View>
+            <View style={styles.badgeSlot}>
+              {item.badge ? (
+                <View style={styles.badge}>
+                  <Text style={styles.badgeText}>{item.badge}</Text>
+                </View>
+              ) : null}
             </View>
             <Ionicons name="chevron-forward" size={20} color={colors.muted} />
           </Card>
@@ -85,24 +90,24 @@ const styles = StyleSheet.create({
     justifyContent: "center"
   },
   textWrap: {
-    flex: 1
-  },
-  titleRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 8,
-    flexWrap: "wrap"
+    flex: 1,
+    minWidth: 0
   },
   itemTitle: {
     color: colors.ink,
     fontWeight: "900",
-    fontSize: 16
+    fontSize: 16,
+    lineHeight: 21
   },
   itemSubtitle: {
     color: colors.muted,
     fontSize: 12,
     marginTop: 3,
     lineHeight: 17
+  },
+  badgeSlot: {
+    width: 58,
+    alignItems: "flex-end"
   },
   badge: {
     height: 22,

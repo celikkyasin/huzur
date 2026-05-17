@@ -190,16 +190,13 @@ export default function HomeScreen() {
         <Text style={styles.ayahTitle}>Günün Ayeti</Text>
       </View>
       <View style={styles.ayahWrap}>
-        <ViewShot ref={ayahShotRef} options={{ format: "png", quality: 1, result: "tmpfile" }}>
+        <ViewShot ref={ayahShotRef} style={styles.ayahShot} options={{ format: "png", quality: 1, result: "tmpfile" }}>
           <Card style={styles.ayah}>
             <View style={styles.cardHeader}>
               <View style={styles.headerLeft}>
                 <Ionicons name="sparkles" size={18} color={colors.gold} />
                 <Text style={styles.cardKicker}>Günün Ayeti</Text>
               </View>
-              <Pressable onPress={shareDailyAyah} disabled={isSharingAyah} style={({ pressed }) => [styles.shareIconButton, pressed && styles.pressed]} accessibilityRole="button" accessibilityLabel="Günün ayetini paylaş">
-                <Ionicons name={isSharingAyah ? "hourglass-outline" : "share-social"} size={20} color={colors.emerald} />
-              </Pressable>
             </View>
             <Text style={styles.arabic}>{ayah.arabic}</Text>
             <View style={styles.goldLine} />
@@ -210,6 +207,9 @@ export default function HomeScreen() {
             </View>
           </Card>
         </ViewShot>
+        <Pressable onPress={shareDailyAyah} disabled={isSharingAyah} style={({ pressed }) => [styles.shareIconButton, pressed && styles.pressed]} accessibilityRole="button" accessibilityLabel="Günün ayetini paylaş">
+          <Ionicons name={isSharingAyah ? "hourglass-outline" : "share-social"} size={20} color={colors.emerald} />
+        </Pressable>
       </View>
     </ScreenContainer>
   );
@@ -329,7 +329,13 @@ const styles = StyleSheet.create({
   ayahWrap: {
     position: "relative"
   },
+  ayahShot: {
+    width: "100%"
+  },
   shareIconButton: {
+    position: "absolute",
+    top: 17,
+    right: 17,
     width: 40,
     height: 40,
     borderRadius: radii.round,

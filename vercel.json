@@ -25,6 +25,14 @@
       "destination": "/api/rewards/claims"
     },
     {
+      "source": "/dua-requests",
+      "destination": "/api/dua-requests"
+    },
+    {
+      "source": "/dua-requests/pray",
+      "destination": "/api/dua-requests?route=pray"
+    },
+    {
       "source": "/friday-messages/config",
       "destination": "/api/friday-messages/config"
     },

@@ -7,7 +7,7 @@ import com.facebook.react.uimanager.ViewManager
 
 class HuzurWidgetPackage : ReactPackage {
   override fun createNativeModules(reactContext: ReactApplicationContext): List<NativeModule> {
-    return listOf(HuzurWidgetModule(reactContext))
+    return listOf(HuzurWidgetModule(reactContext), HuzurSystemUiModule(reactContext))
   }
 
   override fun createViewManagers(reactContext: ReactApplicationContext): List<ViewManager<*, *>> {

@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useState } from "react";
-import { ActivityIndicator, Modal, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { ActivityIndicator, Modal, NativeModules, Pressable, ScrollView, StatusBar, StyleSheet, Text, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
+import * as NavigationBar from "expo-navigation-bar";
+import * as ScreenOrientation from "expo-screen-orientation";
 import { WebView } from "react-native-webview";
 import { AppHeader } from "@/components/AppHeader";
 import { Card } from "@/components/ui/Card";
@@ -24,6 +26,7 @@ const statusColors: Record<KhatmJuzStatus, string> = {
 };
 
 const KHATM_PLAYLIST_ID = "PLbxwMdSNkTauJdKskkVznM4fV3aErgPJf";
+const HuzurSystemUi = NativeModules.HuzurSystemUi as { setVideoFullscreen?: (enabled: boolean) => void } | undefined;
 const KHATM_JUZ_VIDEO_IDS: Record<number, string> = {
   1: "VF00NG6NL9c",
   2: "oZr5IkpPbPI",
@@ -62,9 +65,10 @@ function formatStartDate(value: string) {
   return Number.isNaN(date.getTime()) ? "-" : date.toLocaleDateString("tr-TR", { day: "numeric", month: "long", year: "numeric" });
 }
 
-function getKhatmYoutubeEmbedHtml(juz: number) {
+function getKhatmYoutubeEmbedHtml(juz: number, autoplay = false) {
   const videoId = KHATM_JUZ_VIDEO_IDS[juz] ?? KHATM_JUZ_VIDEO_IDS[1];
-  const videoUrl = `https://www.youtube-nocookie.com/embed/${videoId}?list=${KHATM_PLAYLIST_ID}&playsinline=1&rel=0&modestbranding=1&controls=1&fs=1&iv_load_policy=3`;
+  const autoplayParam = autoplay ? "&autoplay=1" : "";
+  const videoUrl = `https://www.youtube-nocookie.com/embed/${videoId}?list=${KHATM_PLAYLIST_ID}&playsinline=1&rel=0&modestbranding=1&controls=1&fs=1&iv_load_policy=3${autoplayParam}`;
 
   return `<!doctype html>
 <html>
@@ -106,6 +110,7 @@ export default function KhatmTrackerScreen() {
   const [verseError, setVerseError] = useState("");
   const [completionModalVisible, setCompletionModalVisible] = useState(false);
   const [resetModalVisible, setResetModalVisible] = useState(false);
+  const [videoModalVisible, setVideoModalVisible] = useState(false);
   const statuses = useKhatmTrackerStore((state) => state.statuses);
   const startedAt = useKhatmTrackerStore((state) => state.startedAt);
   const completionRewarded = useKhatmTrackerStore((state) => state.completionRewarded);
@@ -118,6 +123,7 @@ export default function KhatmTrackerScreen() {
   const juzList = useMemo(() => Array.from({ length: KHATM_TOTAL_JUZ }, (_, index) => index + 1), []);
   const selectedStatus = statuses[selectedJuz] ?? "unread";
   const selectedJuzVideoHtml = useMemo(() => getKhatmYoutubeEmbedHtml(selectedJuz), [selectedJuz]);
+  const selectedJuzFullscreenVideoHtml = useMemo(() => getKhatmYoutubeEmbedHtml(selectedJuz, true), [selectedJuz]);
 
   useEffect(() => {
     void hydrateKhatmTracker();
@@ -166,10 +172,56 @@ export default function KhatmTrackerScreen() {
     void markCompletionRewarded();
   }, [awardReward, completionRewarded, markCompletionRewarded, progress.isComplete]);
 
+  useEffect(() => {
+    if (!videoModalVisible) {
+      StatusBar.setHidden(false, "fade");
+      HuzurSystemUi?.setVideoFullscreen?.(false);
+      void NavigationBar.setVisibilityAsync("visible").catch(() => undefined);
+      void ScreenOrientation.lockAsync(ScreenOrientation.OrientationLock.PORTRAIT_UP).catch(() => undefined);
+      return;
+    }
+
+    StatusBar.setHidden(true, "fade");
+    HuzurSystemUi?.setVideoFullscreen?.(true);
+    void NavigationBar.setBehaviorAsync("overlay-swipe").catch(() => undefined);
+    void NavigationBar.setVisibilityAsync("hidden").catch(() => undefined);
+    void ScreenOrientation.lockAsync(ScreenOrientation.OrientationLock.LANDSCAPE_RIGHT).catch(() => undefined);
+
+    return () => {
+      StatusBar.setHidden(false, "fade");
+      HuzurSystemUi?.setVideoFullscreen?.(false);
+      void NavigationBar.setVisibilityAsync("visible").catch(() => undefined);
+      void ScreenOrientation.lockAsync(ScreenOrientation.OrientationLock.PORTRAIT_UP).catch(() => undefined);
+    };
+  }, [videoModalVisible]);
+
   const confirmReset = () => {
     setResetModalVisible(false);
     void resetKhatm();
   };
+
+  if (videoModalVisible) {
+    return (
+      <View style={styles.fullscreenVideoModal}>
+        <WebView
+          key={`fullscreen-${selectedJuz}`}
+          source={{ html: selectedJuzFullscreenVideoHtml, baseUrl: "https://www.youtube-nocookie.com" }}
+          allowsFullscreenVideo
+          allowsInlineMediaPlayback={false}
+          androidLayerType="hardware"
+          javaScriptEnabled
+          domStorageEnabled
+          mediaPlaybackRequiresUserAction={false}
+          setSupportMultipleWindows={false}
+          style={styles.fullscreenVideoWebView}
+        />
+        <Pressable accessibilityRole="button" onPress={() => setVideoModalVisible(false)} style={styles.fullscreenCloseButton}>
+          <Ionicons name="contract" size={20} color={colors.white} />
+          <Text style={styles.fullscreenCloseText}>Küçült</Text>
+        </Pressable>
+      </View>
+    );
+  }
 
   return (
     <ScreenContainer>
@@ -272,8 +324,44 @@ export default function KhatmTrackerScreen() {
             setSupportMultipleWindows={false}
             style={styles.videoWebView}
           />
+          <Pressable accessibilityRole="button" onPress={() => setVideoModalVisible(true)} style={styles.videoPlayOverlay}>
+            <View style={styles.videoPlayButton}>
+              <Ionicons name="play" size={28} color={colors.emerald} />
+            </View>
+            <Text style={styles.videoPlayText}>Tam ekranda oynat</Text>
+          </Pressable>
         </View>
       </Card>
+
+      <Modal
+        visible={videoModalVisible}
+        animationType="fade"
+        supportedOrientations={["landscape"]}
+        presentationStyle="fullScreen"
+        statusBarTranslucent
+        navigationBarTranslucent
+        hardwareAccelerated
+        onRequestClose={() => setVideoModalVisible(false)}
+      >
+        <View style={styles.fullscreenVideoModal}>
+          <WebView
+            key={`fullscreen-${selectedJuz}`}
+            source={{ html: selectedJuzFullscreenVideoHtml, baseUrl: "https://www.youtube-nocookie.com" }}
+            allowsFullscreenVideo
+            allowsInlineMediaPlayback={false}
+            androidLayerType="hardware"
+            javaScriptEnabled
+            domStorageEnabled
+            mediaPlaybackRequiresUserAction={false}
+            setSupportMultipleWindows={false}
+            style={styles.fullscreenVideoWebView}
+          />
+          <Pressable accessibilityRole="button" onPress={() => setVideoModalVisible(false)} style={styles.fullscreenCloseButton}>
+            <Ionicons name="contract" size={20} color={colors.white} />
+            <Text style={styles.fullscreenCloseText}>Küçült</Text>
+          </Pressable>
+        </View>
+      </Modal>
 
       {isLoadingVerses ? (
         <Card style={styles.loadingCard}>
@@ -565,6 +653,58 @@ const styles = StyleSheet.create({
   videoWebView: {
     flex: 1,
     backgroundColor: "#10231f"
+  },
+  videoPlayOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 10,
+    backgroundColor: "rgba(7,18,16,0.32)"
+  },
+  videoPlayButton: {
+    width: 68,
+    height: 68,
+    borderRadius: radii.round,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "rgba(255,255,255,0.92)",
+    borderWidth: 2,
+    borderColor: "rgba(215,179,90,0.8)"
+  },
+  videoPlayText: {
+    color: colors.white,
+    fontSize: 13,
+    fontWeight: "900",
+    textShadowColor: "rgba(0,0,0,0.45)",
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 4
+  },
+  fullscreenVideoModal: {
+    flex: 1,
+    backgroundColor: "#050807"
+  },
+  fullscreenVideoWebView: {
+    flex: 1,
+    backgroundColor: "#050807"
+  },
+  fullscreenCloseButton: {
+    position: "absolute",
+    top: 18,
+    right: 18,
+    minHeight: 42,
+    borderRadius: radii.round,
+    paddingHorizontal: 14,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 7,
+    backgroundColor: "rgba(0,0,0,0.52)",
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.18)"
+  },
+  fullscreenCloseText: {
+    color: colors.white,
+    fontSize: 12,
+    fontWeight: "900"
   },
   loadingCard: {
     marginBottom: 14,
