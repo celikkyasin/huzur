@@ -20,6 +20,7 @@ object HuzurWidgetUpdater {
   private const val KEY_AYAH_ARABIC = "ayah_arabic"
   private const val KEY_AYAH_TRANSLATION = "ayah_translation"
   private const val KEY_AYAH_SOURCE = "ayah_source"
+  private const val KEY_AYAH_LIST = "ayah_list_json"
 
   private val defaultPrayerTimes = listOf(
     PrayerEntry("İmsak", "05:23"),
@@ -30,6 +31,12 @@ object HuzurWidgetUpdater {
     PrayerEntry("Yatsı", "21:35")
   )
 
+  private val defaultAyahs = listOf(
+    AyahEntry("اِنَّ مَعَ الْعُسْرِ يُسْرًا", "Şüphesiz her zorlukla beraber bir kolaylık vardır.", "İnşirah Suresi, 6"),
+    AyahEntry("فَاذْكُرُونِي أَذْكُرْكُمْ", "Siz beni anın ki ben de sizi anayım.", "Bakara Suresi, 152"),
+    AyahEntry("اَلَا بِذِكْرِ اللّٰهِ تَطْمَئِنُّ الْقُلُوبُ", "Kalpler ancak Allah'ı anmakla huzur bulur.", "Ra'd Suresi, 28")
+  )
+
   fun saveData(
     context: Context,
     prayerTimesJson: String,
@@ -37,7 +44,8 @@ object HuzurWidgetUpdater {
     sourceLabel: String,
     ayahArabic: String,
     ayahTranslation: String,
-    ayahSource: String
+    ayahSource: String,
+    ayahListJson: String
   ) {
     context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
       .edit()
@@ -47,6 +55,7 @@ object HuzurWidgetUpdater {
       .putString(KEY_AYAH_ARABIC, ayahArabic)
       .putString(KEY_AYAH_TRANSLATION, ayahTranslation)
       .putString(KEY_AYAH_SOURCE, ayahSource)
+      .putString(KEY_AYAH_LIST, ayahListJson)
       .apply()
 
     updateAll(context)
@@ -88,9 +97,9 @@ object HuzurWidgetUpdater {
     views.setTextViewText(R.id.widget_next_prayer_time, state.next.time)
     views.setTextViewText(R.id.widget_next_prayer_countdown, "${state.countdown} kaldı")
 
-    val visible = buildVisiblePrayerTimes(times, state.nextIndex)
-    val nameIds = intArrayOf(R.id.widget_time_name_1, R.id.widget_time_name_2, R.id.widget_time_name_3, R.id.widget_time_name_4)
-    val timeIds = intArrayOf(R.id.widget_time_value_1, R.id.widget_time_value_2, R.id.widget_time_value_3, R.id.widget_time_value_4)
+    val visible = times.take(6)
+    val nameIds = intArrayOf(R.id.widget_time_name_1, R.id.widget_time_name_2, R.id.widget_time_name_3, R.id.widget_time_name_4, R.id.widget_time_name_5, R.id.widget_time_name_6)
+    val timeIds = intArrayOf(R.id.widget_time_value_1, R.id.widget_time_value_2, R.id.widget_time_value_3, R.id.widget_time_value_4, R.id.widget_time_value_5, R.id.widget_time_value_6)
     for (index in nameIds.indices) {
       val item = visible.getOrNull(index)
       views.setTextViewText(nameIds[index], item?.name ?: "--")
@@ -103,10 +112,11 @@ object HuzurWidgetUpdater {
 
   fun buildAyahViews(context: Context): RemoteViews {
     val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+    val ayah = getHourlyAyah(parseAyahs(prefs.getString(KEY_AYAH_LIST, null)))
     val views = RemoteViews(context.packageName, R.layout.widget_daily_ayah)
-    views.setTextViewText(R.id.widget_ayah_arabic, prefs.getString(KEY_AYAH_ARABIC, "اِنَّ مَعَ الْعُسْرِ يُسْرًا"))
-    views.setTextViewText(R.id.widget_ayah_translation, prefs.getString(KEY_AYAH_TRANSLATION, "Şüphesiz her zorlukla beraber bir kolaylık vardır."))
-    views.setTextViewText(R.id.widget_ayah_source, prefs.getString(KEY_AYAH_SOURCE, "İnşirah Suresi, 6"))
+    views.setTextViewText(R.id.widget_ayah_arabic, ayah?.arabic ?: prefs.getString(KEY_AYAH_ARABIC, defaultAyahs.first().arabic))
+    views.setTextViewText(R.id.widget_ayah_translation, ayah?.translation ?: prefs.getString(KEY_AYAH_TRANSLATION, defaultAyahs.first().translation))
+    views.setTextViewText(R.id.widget_ayah_source, ayah?.source ?: prefs.getString(KEY_AYAH_SOURCE, defaultAyahs.first().source))
     views.setOnClickPendingIntent(R.id.widget_ayah_root, buildLaunchIntent(context, "huzur://"))
     return views
   }
@@ -135,11 +145,28 @@ object HuzurWidgetUpdater {
     }.getOrElse { defaultPrayerTimes }
   }
 
-  private fun buildVisiblePrayerTimes(times: List<PrayerEntry>, nextIndex: Int): List<PrayerEntry> {
-    if (times.isEmpty()) return emptyList()
-    return List(minOf(4, times.size)) { offset ->
-      times[(nextIndex + offset) % times.size]
-    }
+  private fun parseAyahs(raw: String?): List<AyahEntry> {
+    if (raw.isNullOrBlank()) return defaultAyahs
+
+    return runCatching {
+      val array = JSONArray(raw)
+      List(array.length()) { index ->
+        val item = array.getJSONObject(index)
+        AyahEntry(
+          arabic = item.optString("arabic", ""),
+          translation = item.optString("translation", ""),
+          source = item.optString("source", "")
+        )
+      }.filter { it.arabic.isNotBlank() && it.translation.isNotBlank() }
+    }.getOrElse { defaultAyahs }
+  }
+
+  private fun getHourlyAyah(ayahs: List<AyahEntry>): AyahEntry? {
+    if (ayahs.isEmpty()) return null
+    val calendar = Calendar.getInstance()
+    val day = calendar.get(Calendar.DAY_OF_YEAR)
+    val hour = calendar.get(Calendar.HOUR_OF_DAY)
+    return ayahs[(day * 24 + hour) % ayahs.size]
   }
 
   private fun getNextPrayerState(times: List<PrayerEntry>): PrayerState {
@@ -165,6 +192,7 @@ object HuzurWidgetUpdater {
   }
 
   private data class PrayerEntry(val name: String, val time: String)
+  private data class AyahEntry(val arabic: String, val translation: String, val source: String)
   private data class IndexedPrayer(val index: Int, val prayer: PrayerEntry, val minutes: Int)
   private data class PrayerState(val next: PrayerEntry, val nextIndex: Int, val countdown: String)
 }

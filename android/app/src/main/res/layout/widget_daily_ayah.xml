@@ -2,32 +2,34 @@
 <FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
   android:id="@+id/widget_ayah_root"
   android:layout_width="match_parent"
-  android:layout_height="match_parent"
-  android:background="@drawable/widget_cream_background"
-  android:padding="16dp">
+  android:layout_height="match_parent">
 
   <ImageView
-    android:layout_width="138dp"
-    android:layout_height="104dp"
-    android:layout_gravity="right|bottom"
-    android:alpha="0.32"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
     android:contentDescription="@null"
-    android:src="@drawable/widget_mosque_watermark" />
+    android:scaleType="centerCrop"
+    android:src="@drawable/widget_prayer_hero_bg" />
+
+  <View
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@drawable/widget_image_scrim" />
 
   <LinearLayout
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:gravity="center_vertical"
-    android:orientation="vertical">
+    android:orientation="vertical"
+    android:padding="15dp">
 
     <TextView
       android:layout_width="match_parent"
       android:layout_height="wrap_content"
-      android:fontFamily="sans"
       android:gravity="center"
       android:letterSpacing="0.08"
-      android:text="GÜNÜN AYETİ"
-      android:textColor="#0A5C47"
+      android:text="SAATLİK AYET"
+      android:textColor="#EBD8A1"
       android:textSize="11sp"
       android:textStyle="bold" />
 
@@ -35,35 +37,27 @@
       android:id="@+id/widget_ayah_arabic"
       android:layout_width="match_parent"
       android:layout_height="wrap_content"
-      android:layout_marginTop="10dp"
+      android:layout_marginTop="9dp"
       android:fontFamily="serif"
       android:gravity="center"
       android:maxLines="2"
       android:text="اِنَّ مَعَ الْعُسْرِ يُسْرًا"
-      android:textColor="#073D33"
-      android:textSize="22sp"
+      android:textColor="#FFFFFF"
+      android:textSize="25sp"
       android:textStyle="bold" />
-
-    <ImageView
-      android:layout_width="82dp"
-      android:layout_height="22dp"
-      android:layout_gravity="center"
-      android:layout_marginTop="5dp"
-      android:contentDescription="@null"
-      android:src="@drawable/widget_ayah_ornament" />
 
     <TextView
       android:id="@+id/widget_ayah_translation"
       android:layout_width="match_parent"
       android:layout_height="wrap_content"
-      android:layout_marginTop="6dp"
+      android:layout_marginTop="9dp"
       android:ellipsize="end"
       android:fontFamily="serif"
       android:gravity="center"
       android:maxLines="3"
       android:text="Şüphesiz her zorlukla beraber bir kolaylık vardır."
-      android:textColor="#12342D"
-      android:textSize="16sp"
+      android:textColor="#FFF7E5"
+      android:textSize="17sp"
       android:textStyle="bold" />
 
     <TextView
@@ -71,9 +65,8 @@
       android:layout_width="wrap_content"
       android:layout_height="wrap_content"
       android:layout_gravity="center"
-      android:layout_marginTop="11dp"
+      android:layout_marginTop="12dp"
       android:background="@drawable/widget_primary_pill"
-      android:fontFamily="sans"
       android:gravity="center"
       android:maxLines="1"
       android:paddingLeft="14dp"

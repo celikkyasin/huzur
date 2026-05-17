@@ -1,6 +1,6 @@
 import { useEffect } from "react";
 import { NativeModules, Platform } from "react-native";
-import { getDailyAyah } from "@/data/mock";
+import { dailyAyahs, getDailyAyah } from "@/data/mock";
 import { useLocationStore } from "@/store/locationStore";
 import { usePrayerTimesStore } from "@/store/prayerTimesStore";
 
@@ -11,7 +11,8 @@ type HuzurWidgetModuleType = {
     sourceLabel: string,
     ayahArabic: string,
     ayahTranslation: string,
-    ayahSource: string
+    ayahSource: string,
+    ayahListJson: string
   ) => void;
 };
 
@@ -37,7 +38,8 @@ export function HuzurWidgetSyncGate() {
       sourceLabel || "Diyanet vakitleri",
       ayah.arabic,
       ayah.translation,
-      ayah.source
+      ayah.source,
+      JSON.stringify(dailyAyahs.map(({ arabic, translation, source }) => ({ arabic, translation, source })))
     );
   }, [city, country, displayPlace, prayerTimes, sourceLabel]);
 

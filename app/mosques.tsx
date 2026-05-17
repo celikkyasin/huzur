@@ -99,6 +99,12 @@ export default function MosquesScreen() {
     void loadNearbyMosques({ latitude, longitude });
   }, [latitude, loadNearbyMosques, longitude]);
 
+  useEffect(() => {
+    if (!hasCoordinates && !isLoadingLocation) {
+      void requestLocationPermission();
+    }
+  }, [hasCoordinates, isLoadingLocation, requestLocationPermission]);
+
   const refreshNearbyMosques = async () => {
     await refreshLocation();
     const nextLocation = useLocationStore.getState();

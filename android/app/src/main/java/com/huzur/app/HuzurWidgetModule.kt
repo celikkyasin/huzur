@@ -14,7 +14,8 @@ class HuzurWidgetModule(private val reactContext: ReactApplicationContext) : Rea
     sourceLabel: String,
     ayahArabic: String,
     ayahTranslation: String,
-    ayahSource: String
+    ayahSource: String,
+    ayahListJson: String
   ) {
     HuzurWidgetUpdater.saveData(
       reactContext,
@@ -23,7 +24,8 @@ class HuzurWidgetModule(private val reactContext: ReactApplicationContext) : Rea
       sourceLabel,
       ayahArabic,
       ayahTranslation,
-      ayahSource
+      ayahSource,
+      ayahListJson
     )
   }
 }

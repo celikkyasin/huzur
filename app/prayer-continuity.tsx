@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Modal, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { AppHeader } from "@/components/AppHeader";
@@ -75,6 +75,7 @@ export default function PrayerContinuityScreen() {
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [completionModalVisible, setCompletionModalVisible] = useState(false);
   const records = usePrayerTrackerStore((state) => state.records);
+  const hydratePrayerTracker = usePrayerTrackerStore((state) => state.hydratePrayerTracker);
   const markPrayer = usePrayerTrackerStore((state) => state.markPrayer);
   const addQadaPrayer = useQadaPrayerStore((state) => state.changeCount);
   const prayerTimes = usePrayerTimesStore((state) => state.times);
@@ -86,6 +87,10 @@ export default function PrayerContinuityScreen() {
   const streak = getCompletionStreak(records);
 
   const timeMap = useMemo(() => new Map(prayerTimes.map((time) => [time.id, time.time])), [prayerTimes]);
+
+  useEffect(() => {
+    void hydratePrayerTracker();
+  }, [hydratePrayerTracker]);
 
   const updatePrayer = async (prayerId: TrackedPrayerId, status: PrayerCompletionStatus) => {
     const previousStatus = records[selectedDateKey]?.prayers[prayerId];
