@@ -4,6 +4,8 @@ const DIJANET_DIGITAL_FEED_URL = `https://www.youtube.com/feeds/videos.xml?chann
 const DIJANET_DIGITAL_VIDEOS_URL = "https://www.youtube.com/@DiyanetDijital/videos";
 const DIYANET_HABER_HUTBELER_URL = "https://www.diyanethaber.com.tr/hutbeler";
 const DIYANET_HABER_ORIGIN = "https://www.diyanethaber.com.tr";
+const DIYANET_TV_ARCHIVE_URL = "https://www.diyanet.tv/cuma-hutbesi-canli-cuma-sevinci/bolumler";
+const DIYANET_TV_ORIGIN = "https://www.diyanet.tv";
 const MAX_SERMONS = 120;
 
 const monthNames = [
@@ -199,6 +201,28 @@ function toAbsoluteDiyanetHaberUrl(value) {
   return `${DIYANET_HABER_ORIGIN}${url.startsWith("/") ? "" : "/"}${url}`;
 }
 
+function toAbsoluteDiyanetTvUrl(value) {
+  const url = decodeXml(value);
+  if (!url) {
+    return "";
+  }
+
+  if (/^https?:\/\//i.test(url)) {
+    return url;
+  }
+
+  return `${DIYANET_TV_ORIGIN}${url.startsWith("/") ? "" : "/"}${url}`;
+}
+
+function parseYoutubeVideoId(html) {
+  return (
+    /youtube\.com\/embed\/([a-zA-Z0-9_-]{6,})/i.exec(String(html || ""))?.[1] ||
+    /youtube\.com\/watch\?v=([a-zA-Z0-9_-]{6,})/i.exec(String(html || ""))?.[1] ||
+    /youtu\.be\/([a-zA-Z0-9_-]{6,})/i.exec(String(html || ""))?.[1] ||
+    ""
+  );
+}
+
 function parseDiyanetHaberSubject(html) {
   const text = stripHtml(html);
   const quotedSubject = /"([^"]{4,120})"\s+konulu\s+Cuma hutbesi/i.exec(text)?.[1];
@@ -245,6 +269,52 @@ function parseDiyanetHaberList(html) {
   }
 
   return sermons.sort((a, b) => b.isoDate.localeCompare(a.isoDate));
+}
+
+function parseDiyanetTvArchiveLinks(html) {
+  const links = [];
+  const seen = new Set();
+  const linkPattern = /<a\b[^>]*href="([^"]+)"[^>]*(?:alt|title)="([^"]*?Cuma Hutbesi[^"]*?)"[^>]*>/gi;
+
+  for (const match of String(html || "").matchAll(linkPattern)) {
+    const sourceUrl = toAbsoluteDiyanetTvUrl(match[1]);
+    const title = decodeXml(match[2]);
+
+    if (!sourceUrl.includes("diyanet.tv") || !/cuma\s+hutbesi/i.test(title) || /işaret dili/i.test(title)) {
+      continue;
+    }
+
+    const dateInfo = parseTitleDate(title);
+    if (!dateInfo || seen.has(dateInfo.isoDate)) {
+      continue;
+    }
+
+    seen.add(dateInfo.isoDate);
+    links.push({ sourceUrl, title, dateInfo });
+  }
+
+  return links.sort((a, b) => b.dateInfo.isoDate.localeCompare(a.dateInfo.isoDate));
+}
+
+function buildDiyanetTvSermon(link, detailHtml) {
+  const videoId = parseYoutubeVideoId(detailHtml);
+  if (!videoId) {
+    return null;
+  }
+
+  return {
+    id: link.dateInfo.isoDate,
+    isoDate: link.dateInfo.isoDate,
+    date: link.dateInfo.date,
+    monthKey: link.dateInfo.monthKey,
+    monthLabel: link.dateInfo.monthLabel,
+    title: parseSermonTitle(link.title),
+    summary: "Diyanet TV arşivinde yer alan resmi Cuma hutbesi videosu.",
+    sourceName: "Diyanet TV",
+    sourceUrl: link.sourceUrl,
+    youtubeVideoId: videoId,
+    publishedAt: null
+  };
 }
 
 function parseFeedEntries(xml) {
@@ -357,7 +427,7 @@ function normalizeSermon(item) {
   const title = normalizeTitle(item?.title);
   const youtubeVideoId = String(item?.youtubeVideoId || "").trim();
 
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(isoDate) || !title) {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(isoDate) || !title || !youtubeVideoId) {
     return null;
   }
 
@@ -378,7 +448,7 @@ function normalizeSermon(item) {
     title,
     summary: normalizeTitle(item?.summary) || "Diyanet Dijital tarafından yayımlanan resmi Cuma hutbesi videosu.",
     sourceName,
-    sourceUrl: String(item?.sourceUrl || (youtubeVideoId ? `https://www.youtube.com/watch?v=${youtubeVideoId}` : "")).trim(),
+    sourceUrl: String(item?.sourceUrl || `https://www.youtube.com/watch?v=${youtubeVideoId}`).trim(),
     youtubeVideoId,
     publishedAt: item?.publishedAt || null
   };
@@ -432,6 +502,7 @@ async function syncLatestDiyanetSermons() {
   const pageResponse = await fetch(DIJANET_DIGITAL_VIDEOS_URL, { headers });
   const feedResponse = await fetch(DIJANET_DIGITAL_FEED_URL, { headers });
   const haberResponse = await fetch(DIYANET_HABER_HUTBELER_URL, { headers });
+  const tvResponse = await fetch(DIYANET_TV_ARCHIVE_URL, { headers });
   const fetchedSermons = [];
   const errors = [];
 
@@ -478,6 +549,32 @@ async function syncLatestDiyanetSermons() {
     }
   } else {
     errors.push(`Diyanet Haber hutbeler page failed with ${haberResponse.status}`);
+  }
+
+  if (tvResponse.ok) {
+    try {
+      const tvLinks = parseDiyanetTvArchiveLinks(await tvResponse.text()).slice(0, 12);
+      for (const link of tvLinks) {
+        try {
+          const detailResponse = await fetch(link.sourceUrl, { headers });
+          if (!detailResponse.ok) {
+            errors.push(`Diyanet TV detail failed with ${detailResponse.status}: ${link.sourceUrl}`);
+            continue;
+          }
+
+          const sermon = buildDiyanetTvSermon(link, await detailResponse.text());
+          if (sermon) {
+            fetchedSermons.push(sermon);
+          }
+        } catch (error) {
+          errors.push(error instanceof Error ? error.message : "Diyanet TV detail parse failed.");
+        }
+      }
+    } catch (error) {
+      errors.push(error instanceof Error ? error.message : "Diyanet TV archive parse failed.");
+    }
+  } else {
+    errors.push(`Diyanet TV archive failed with ${tvResponse.status}`);
   }
 
   if (!fetchedSermons.length) {

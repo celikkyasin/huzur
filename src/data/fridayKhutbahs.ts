@@ -360,9 +360,10 @@ export const fridayKhutbahs: FridayKhutbah[] = [
     monthKey: "2026-05",
     monthLabel: "Mayıs 2026",
     title: "Söz Ahlakı ve Sosyal Medya",
-    summary: "Diyanet Haber tarafından yayımlanan 22 Mayıs 2026 tarihli resmi Cuma hutbesi metni.",
-    sourceName: "Diyanet Haber",
-    sourceUrl: "https://www.diyanethaber.com.tr/22-mayis-2026-cuma-hutbesi"
+    summary: "Diyanet TV arşivinde yer alan 22 Mayıs 2026 Cuma hutbesi kaydı.",
+    sourceName: "Diyanet TV",
+    sourceUrl: "https://www.diyanet.tv/cuma-hutbesi-canli-cuma-sevinci/video/soz-ahlaki-ve-sosyal-medya-cuma-hutbesi-22-mayis-2026",
+    youtubeVideoId: "YqIV-xudAsM"
   }
 ];
 
@@ -384,7 +385,7 @@ export function mergeFridayKhutbahs(remoteKhutbahs: FridayKhutbah[] | null | und
   }
 
   for (const khutbah of remoteKhutbahs || []) {
-    if (!khutbah.isoDate || !khutbah.title) {
+    if (!khutbah.isoDate || !khutbah.title || !khutbah.youtubeVideoId) {
       continue;
     }
 
