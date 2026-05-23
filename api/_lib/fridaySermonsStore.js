@@ -2,6 +2,8 @@ const SERMONS_KEY = "huzur:friday:sermons";
 const DIJANET_DIGITAL_CHANNEL_ID = "UCE7X5yJpLm4k_L-V_WH7yWA";
 const DIJANET_DIGITAL_FEED_URL = `https://www.youtube.com/feeds/videos.xml?channel_id=${DIJANET_DIGITAL_CHANNEL_ID}`;
 const DIJANET_DIGITAL_VIDEOS_URL = "https://www.youtube.com/@DiyanetDijital/videos";
+const DIYANET_HABER_HUTBELER_URL = "https://www.diyanethaber.com.tr/hutbeler";
+const DIYANET_HABER_ORIGIN = "https://www.diyanethaber.com.tr";
 const MAX_SERMONS = 120;
 
 const monthNames = [
@@ -142,7 +144,8 @@ function slugify(value) {
 }
 
 function parseTitleDate(title) {
-  const match = /(\d{1,2})\s+([A-Za-zÇĞİÖŞÜçğıöşü]+)\s+(\d{4})\s+Cuma\s+Hutbesi/i.exec(title);
+  const normalized = normalizeTitle(title).replace(/\s+-\s+/g, " ");
+  const match = /(\d{1,2})\s+([A-Za-zÇĞİÖŞÜçğıöşü]+)\s+(\d{4})\s+Cuma\s+Hutbesi/i.exec(normalized);
   if (!match) {
     return null;
   }
@@ -172,6 +175,76 @@ function parseSermonTitle(title) {
   }
 
   return cleaned.replace(/^\d{1,2}\s+[A-Za-zÇĞİÖŞÜçğıöşü]+\s+\d{4}\s+Cuma\s+Hutbesi\s*/i, "").trim() || cleaned;
+}
+
+function stripHtml(value) {
+  return decodeXml(
+    String(value || "")
+      .replace(/<script[\s\S]*?<\/script>/gi, " ")
+      .replace(/<style[\s\S]*?<\/style>/gi, " ")
+      .replace(/<[^>]+>/g, " ")
+  );
+}
+
+function toAbsoluteDiyanetHaberUrl(value) {
+  const url = decodeXml(value);
+  if (!url) {
+    return "";
+  }
+
+  if (/^https?:\/\//i.test(url)) {
+    return url;
+  }
+
+  return `${DIYANET_HABER_ORIGIN}${url.startsWith("/") ? "" : "/"}${url}`;
+}
+
+function parseDiyanetHaberSubject(html) {
+  const text = stripHtml(html);
+  const quotedSubject = /"([^"]{4,120})"\s+konulu\s+Cuma hutbesi/i.exec(text)?.[1];
+  if (quotedSubject) {
+    return normalizeTitle(quotedSubject);
+  }
+
+  const headings = [...text.matchAll(/\b([A-ZÇĞİÖŞÜ][A-ZÇĞİÖŞÜ\s,;:'-]{6,90})\b/g)].map((match) => normalizeTitle(match[1]));
+  return headings.find((heading) => !/HUTBELER|CUMA HUTBESİ|DİYANET|MÜSLÜMANLAR/.test(heading)) || "";
+}
+
+function parseDiyanetHaberList(html) {
+  const sermons = [];
+  const seen = new Set();
+  const linkPattern = /<a\b[^>]*href="([^"]+)"[^>]*>([\s\S]*?)<\/a>/gi;
+
+  for (const match of String(html || "").matchAll(linkPattern)) {
+    const sourceUrl = toAbsoluteDiyanetHaberUrl(match[1]);
+    const linkText = stripHtml(match[2]);
+
+    if (!sourceUrl.includes("diyanethaber.com.tr") || !/cuma\s+hutbesi/i.test(linkText)) {
+      continue;
+    }
+
+    const dateInfo = parseTitleDate(linkText);
+    if (!dateInfo || seen.has(dateInfo.isoDate)) {
+      continue;
+    }
+
+    seen.add(dateInfo.isoDate);
+    sermons.push({
+      id: dateInfo.isoDate,
+      isoDate: dateInfo.isoDate,
+      date: dateInfo.date,
+      monthKey: dateInfo.monthKey,
+      monthLabel: dateInfo.monthLabel,
+      title: "Cuma Hutbesi",
+      summary: "Diyanet Haber tarafından yayımlanan resmi Cuma hutbesi metni.",
+      sourceName: "Diyanet Haber",
+      sourceUrl,
+      youtubeVideoId: "",
+      publishedAt: null
+    });
+  }
+
+  return sermons.sort((a, b) => b.isoDate.localeCompare(a.isoDate));
 }
 
 function parseFeedEntries(xml) {
@@ -284,7 +357,7 @@ function normalizeSermon(item) {
   const title = normalizeTitle(item?.title);
   const youtubeVideoId = String(item?.youtubeVideoId || "").trim();
 
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(isoDate) || !title || !youtubeVideoId) {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(isoDate) || !title) {
     return null;
   }
 
@@ -305,7 +378,7 @@ function normalizeSermon(item) {
     title,
     summary: normalizeTitle(item?.summary) || "Diyanet Dijital tarafından yayımlanan resmi Cuma hutbesi videosu.",
     sourceName,
-    sourceUrl: String(item?.sourceUrl || `https://www.youtube.com/watch?v=${youtubeVideoId}`).trim(),
+    sourceUrl: String(item?.sourceUrl || (youtubeVideoId ? `https://www.youtube.com/watch?v=${youtubeVideoId}` : "")).trim(),
     youtubeVideoId,
     publishedAt: item?.publishedAt || null
   };
@@ -358,6 +431,7 @@ async function syncLatestDiyanetSermons() {
   };
   const pageResponse = await fetch(DIJANET_DIGITAL_VIDEOS_URL, { headers });
   const feedResponse = await fetch(DIJANET_DIGITAL_FEED_URL, { headers });
+  const haberResponse = await fetch(DIYANET_HABER_HUTBELER_URL, { headers });
   const fetchedSermons = [];
   const errors = [];
 
@@ -379,6 +453,31 @@ async function syncLatestDiyanetSermons() {
     }
   } else {
     errors.push(`Diyanet Dijital feed failed with ${feedResponse.status}`);
+  }
+
+  if (haberResponse.ok) {
+    try {
+      const haberSermons = parseDiyanetHaberList(await haberResponse.text()).slice(0, 10);
+      for (const sermon of haberSermons) {
+        try {
+          const detailResponse = await fetch(sermon.sourceUrl, { headers });
+          if (detailResponse.ok) {
+            const subject = parseDiyanetHaberSubject(await detailResponse.text());
+            if (subject && !/cuma hutbesi/i.test(subject)) {
+              sermon.title = subject;
+              sermon.summary = `Diyanet Haber tarafından yayımlanan ${sermon.date} tarihli resmi Cuma hutbesi metni.`;
+            }
+          }
+        } catch {
+          // Keep the list item when the detail page cannot be read.
+        }
+      }
+      fetchedSermons.push(...haberSermons);
+    } catch (error) {
+      errors.push(error instanceof Error ? error.message : "Diyanet Haber hutbeler parse failed.");
+    }
+  } else {
+    errors.push(`Diyanet Haber hutbeler page failed with ${haberResponse.status}`);
   }
 
   if (!fetchedSermons.length) {

@@ -60,7 +60,9 @@ const khutbahPreviews: Record<string, string> = {
   "2026-05-08":
     "İbadetlerin insanı Rabbine yaklaştıran, kalbi arındıran ve davranışları güzelleştiren yönü anlatılır.",
   "2026-05-15":
-    "Toplumsal sorumluluk, komşuluk, yardımlaşma ve ortak iyiliği koruma bilinci üzerinde durulur."
+    "Toplumsal sorumluluk, komşuluk, yardımlaşma ve ortak iyiliği koruma bilinci üzerinde durulur.",
+  "2026-05-22":
+    "Söz ahlakı, güzel üslup, doğru haber ve sosyal medyada kul hakkına riayet etme sorumluluğu hatırlatılır."
 };
 
 export function getKhutbahPreview(id: string) {
@@ -350,6 +352,17 @@ export const fridayKhutbahs: FridayKhutbah[] = [
     sourceName: "Diyanet Haber",
     sourceUrl: "https://www.diyanethaber.com.tr/video/15-mayis-2026-cuma-hutbesi",
     youtubeVideoId: "ZIDAY8_sHjI"
+  },
+  {
+    id: "2026-05-22",
+    isoDate: "2026-05-22",
+    date: "22 Mayıs 2026",
+    monthKey: "2026-05",
+    monthLabel: "Mayıs 2026",
+    title: "Söz Ahlakı ve Sosyal Medya",
+    summary: "Diyanet Haber tarafından yayımlanan 22 Mayıs 2026 tarihli resmi Cuma hutbesi metni.",
+    sourceName: "Diyanet Haber",
+    sourceUrl: "https://www.diyanethaber.com.tr/22-mayis-2026-cuma-hutbesi"
   }
 ];
 
@@ -371,7 +384,7 @@ export function mergeFridayKhutbahs(remoteKhutbahs: FridayKhutbah[] | null | und
   }
 
   for (const khutbah of remoteKhutbahs || []) {
-    if (!khutbah.isoDate || !khutbah.title || !khutbah.youtubeVideoId) {
+    if (!khutbah.isoDate || !khutbah.title) {
       continue;
     }
 
