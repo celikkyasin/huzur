@@ -385,7 +385,7 @@ export function mergeFridayKhutbahs(remoteKhutbahs: FridayKhutbah[] | null | und
   }
 
   for (const khutbah of remoteKhutbahs || []) {
-    if (!khutbah.isoDate || !khutbah.title || !khutbah.youtubeVideoId) {
+    if (!khutbah.isoDate || !khutbah.title || !khutbah.sourceUrl) {
       continue;
     }
 

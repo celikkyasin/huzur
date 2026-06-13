@@ -234,6 +234,20 @@ function parseDiyanetHaberSubject(html) {
   return headings.find((heading) => !/HUTBELER|CUMA HUTBESİ|DİYANET|MÜSLÜMANLAR/.test(heading)) || "";
 }
 
+async function fetchTextSource(name, url, headers) {
+  try {
+    const response = await fetch(url, { headers });
+    if (!response.ok) {
+      return { ok: false, error: `${name} failed with ${response.status}` };
+    }
+
+    return { ok: true, text: await response.text() };
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "fetch failed";
+    return { ok: false, error: `${name} fetch failed: ${message}` };
+  }
+}
+
 function parseDiyanetHaberList(html) {
   const sermons = [];
   const seen = new Set();
@@ -426,8 +440,9 @@ function normalizeSermon(item) {
   const isoDate = String(item?.isoDate || dateInfo?.isoDate || "").trim();
   const title = normalizeTitle(item?.title);
   const youtubeVideoId = String(item?.youtubeVideoId || "").trim();
+  const sourceUrl = String(item?.sourceUrl || (youtubeVideoId ? `https://www.youtube.com/watch?v=${youtubeVideoId}` : "")).trim();
 
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(isoDate) || !title || !youtubeVideoId) {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(isoDate) || !title || !sourceUrl) {
     return null;
   }
 
@@ -448,7 +463,7 @@ function normalizeSermon(item) {
     title,
     summary: normalizeTitle(item?.summary) || "Diyanet Dijital tarafından yayımlanan resmi Cuma hutbesi videosu.",
     sourceName,
-    sourceUrl: String(item?.sourceUrl || `https://www.youtube.com/watch?v=${youtubeVideoId}`).trim(),
+    sourceUrl,
     youtubeVideoId,
     publishedAt: item?.publishedAt || null
   };
@@ -499,36 +514,38 @@ async function syncLatestDiyanetSermons() {
   const headers = {
     "User-Agent": "HuzurApp/1.0 (+https://huzur.app)"
   };
-  const pageResponse = await fetch(DIJANET_DIGITAL_VIDEOS_URL, { headers });
-  const feedResponse = await fetch(DIJANET_DIGITAL_FEED_URL, { headers });
-  const haberResponse = await fetch(DIYANET_HABER_HUTBELER_URL, { headers });
-  const tvResponse = await fetch(DIYANET_TV_ARCHIVE_URL, { headers });
+  const [pageResponse, feedResponse, haberResponse, tvResponse] = await Promise.all([
+    fetchTextSource("Diyanet Dijital videos page", DIJANET_DIGITAL_VIDEOS_URL, headers),
+    fetchTextSource("Diyanet Dijital feed", DIJANET_DIGITAL_FEED_URL, headers),
+    fetchTextSource("Diyanet Haber hutbeler page", DIYANET_HABER_HUTBELER_URL, headers),
+    fetchTextSource("Diyanet TV archive", DIYANET_TV_ARCHIVE_URL, headers)
+  ]);
   const fetchedSermons = [];
   const errors = [];
 
   if (pageResponse.ok) {
     try {
-      fetchedSermons.push(...parseVideosPageSermons(await pageResponse.text()));
+      fetchedSermons.push(...parseVideosPageSermons(pageResponse.text));
     } catch (error) {
       errors.push(error instanceof Error ? error.message : "Videos page parse failed.");
     }
   } else {
-    errors.push(`Diyanet Dijital videos page failed with ${pageResponse.status}`);
+    errors.push(pageResponse.error);
   }
 
   if (feedResponse.ok) {
     try {
-      fetchedSermons.push(...parseFeedSermons(await feedResponse.text()));
+      fetchedSermons.push(...parseFeedSermons(feedResponse.text));
     } catch (error) {
       errors.push(error instanceof Error ? error.message : "Feed parse failed.");
     }
   } else {
-    errors.push(`Diyanet Dijital feed failed with ${feedResponse.status}`);
+    errors.push(feedResponse.error);
   }
 
   if (haberResponse.ok) {
     try {
-      const haberSermons = parseDiyanetHaberList(await haberResponse.text()).slice(0, 10);
+      const haberSermons = parseDiyanetHaberList(haberResponse.text).slice(0, 10);
       for (const sermon of haberSermons) {
         try {
           const detailResponse = await fetch(sermon.sourceUrl, { headers });
@@ -548,12 +565,12 @@ async function syncLatestDiyanetSermons() {
       errors.push(error instanceof Error ? error.message : "Diyanet Haber hutbeler parse failed.");
     }
   } else {
-    errors.push(`Diyanet Haber hutbeler page failed with ${haberResponse.status}`);
+    errors.push(haberResponse.error);
   }
 
   if (tvResponse.ok) {
     try {
-      const tvLinks = parseDiyanetTvArchiveLinks(await tvResponse.text()).slice(0, 12);
+      const tvLinks = parseDiyanetTvArchiveLinks(tvResponse.text).slice(0, 12);
       for (const link of tvLinks) {
         try {
           const detailResponse = await fetch(link.sourceUrl, { headers });
@@ -574,7 +591,7 @@ async function syncLatestDiyanetSermons() {
       errors.push(error instanceof Error ? error.message : "Diyanet TV archive parse failed.");
     }
   } else {
-    errors.push(`Diyanet TV archive failed with ${tvResponse.status}`);
+    errors.push(tvResponse.error);
   }
 
   if (!fetchedSermons.length) {

@@ -17,7 +17,9 @@ function hasApiUrl() {
 }
 
 function normalizeSermon(item: RemoteFridayKhutbah): FridayKhutbah | null {
-  if (!item.isoDate || !item.title || !item.youtubeVideoId) {
+  const sourceUrl = item.sourceUrl || (item.youtubeVideoId ? `https://www.youtube.com/watch?v=${item.youtubeVideoId}` : "");
+
+  if (!item.isoDate || !item.title || !sourceUrl) {
     return null;
   }
 
@@ -35,7 +37,7 @@ function normalizeSermon(item: RemoteFridayKhutbah): FridayKhutbah | null {
     title: item.title,
     summary: item.summary || "Diyanet Dijital tarafından yayımlanan resmi Cuma hutbesi videosu.",
     sourceName,
-    sourceUrl: item.sourceUrl || `https://www.youtube.com/watch?v=${item.youtubeVideoId}`,
+    sourceUrl,
     youtubeVideoId: item.youtubeVideoId
   };
 }

@@ -92,7 +92,7 @@
   },
   "crons": [
     {
-      "path": "/api/friday-sermons",
+      "path": "/friday-sermons/sync",
       "schedule": "0 5 * * 5"
     }
   ]
