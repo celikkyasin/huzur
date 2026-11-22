@@ -15,22 +15,53 @@ const PRAYERS_WITH_NOTIFICATIONS = new Set(["imsak", "ogle", "ikindi", "aksam", 
 
 export type PrayerNotificationSoundMode = "silent" | "default" | "adhan";
 
-export type PrayerNotificationPreferences = {
+export type PrayerNotifiableId = "imsak" | "ogle" | "ikindi" | "aksam" | "yatsi";
+
+export type PerPrayerNotificationConfig = {
+  enabled: boolean;
   reminderMinutes: number;
   soundMode: PrayerNotificationSoundMode;
 };
 
-export const MIN_REMINDER_MINUTES = 0;
-export const MAX_REMINDER_MINUTES = 30;
-export const soundModeOptions: Array<{ mode: PrayerNotificationSoundMode; label: string; description: string }> = [
-  { mode: "silent", label: "Sessiz", description: "Sadece ekranda bildirim gösterir." },
-  { mode: "default", label: "Kısa uyarı", description: "Ezan çalmadan kısa bildirim tonu verir." },
-  { mode: "adhan", label: "Ezan", description: "Vakit girince ezan sesi çalar." }
+export type PrayerNotificationPreferences = {
+  reminderMinutes: number;
+  soundMode: PrayerNotificationSoundMode;
+  notifyOnTime?: boolean;
+  perPrayer?: Partial<Record<PrayerNotifiableId, PerPrayerNotificationConfig>>;
+};
+
+export const NOTIFIABLE_PRAYERS: Array<{ id: PrayerNotifiableId; label: string; icon: "moon" | "sunny" | "partly-sunny" | "cloudy-night" | "sparkles" }> = [
+  { id: "imsak", label: "İmsak / Sabah", icon: "sparkles" },
+  { id: "ogle", label: "Öğle", icon: "sunny" },
+  { id: "ikindi", label: "İkindi", icon: "partly-sunny" },
+  { id: "aksam", label: "Akşam", icon: "cloudy-night" },
+  { id: "yatsi", label: "Yatsı", icon: "moon" }
 ];
+
+export const MIN_REMINDER_MINUTES = 0;
+export const MAX_REMINDER_MINUTES = 45;
+export const REMINDER_PRESETS = [0, 5, 10, 15, 30, 45];
+export const soundModeOptions: Array<{ mode: PrayerNotificationSoundMode; label: string; description: string }> = [
+  { mode: "silent", label: "Sessiz Bildirim", description: "Ses çalmadan yalnızca ekranda hatırlatma gösterir." },
+  { mode: "default", label: "Kısa Uyarı Sesi", description: "Ezan okumadan telefonun zarif kısa bildirim tonunu çalar." },
+  { mode: "adhan", label: "Ezan Sesi", description: "Vakit girdiğinde makamlı ezan sesi ile bildirim verir." }
+];
+
+function buildDefaultPerPrayer(reminderMinutes = 15, soundMode: PrayerNotificationSoundMode = "default"): Record<PrayerNotifiableId, PerPrayerNotificationConfig> {
+  return {
+    imsak: { enabled: true, reminderMinutes, soundMode },
+    ogle: { enabled: true, reminderMinutes, soundMode },
+    ikindi: { enabled: true, reminderMinutes, soundMode },
+    aksam: { enabled: true, reminderMinutes, soundMode },
+    yatsi: { enabled: true, reminderMinutes, soundMode }
+  };
+}
 
 const defaultPreferences: PrayerNotificationPreferences = {
   reminderMinutes: 15,
-  soundMode: "default"
+  soundMode: "default",
+  notifyOnTime: true,
+  perPrayer: buildDefaultPerPrayer(15, "default")
 };
 
 Notifications.setNotificationHandler({
@@ -55,16 +86,55 @@ function subtractMinutes(hour: number, minute: number, amount: number) {
   };
 }
 
+function normalizeSoundMode(mode?: PrayerNotificationSoundMode): PrayerNotificationSoundMode {
+  return mode === "silent" || mode === "default" || mode === "adhan" ? mode : defaultPreferences.soundMode;
+}
+
+function normalizeMinutes(minutes?: number, fallback = defaultPreferences.reminderMinutes): number {
+  const num = Number(minutes);
+  return Number.isFinite(num) ? Math.max(MIN_REMINDER_MINUTES, Math.min(MAX_REMINDER_MINUTES, Math.round(num))) : fallback;
+}
+
 function normalizePreferences(value?: Partial<PrayerNotificationPreferences> | null): PrayerNotificationPreferences {
-  const reminderMinutes = Number(value?.reminderMinutes);
-  const soundMode = value?.soundMode;
-  const normalizedReminderMinutes = Number.isFinite(reminderMinutes)
-    ? Math.max(MIN_REMINDER_MINUTES, Math.min(MAX_REMINDER_MINUTES, Math.round(reminderMinutes)))
-    : defaultPreferences.reminderMinutes;
+  const normalizedReminderMinutes = normalizeMinutes(value?.reminderMinutes);
+  const normalizedSoundMode = normalizeSoundMode(value?.soundMode);
+  const notifyOnTime = value?.notifyOnTime !== false;
+  const basePerPrayer = buildDefaultPerPrayer(normalizedReminderMinutes, normalizedSoundMode);
+  const incomingPerPrayer = value?.perPrayer || {};
+
+  const perPrayer: Record<PrayerNotifiableId, PerPrayerNotificationConfig> = {
+    imsak: {
+      enabled: incomingPerPrayer.imsak?.enabled ?? true,
+      reminderMinutes: normalizeMinutes(incomingPerPrayer.imsak?.reminderMinutes, normalizedReminderMinutes),
+      soundMode: normalizeSoundMode(incomingPerPrayer.imsak?.soundMode ?? normalizedSoundMode)
+    },
+    ogle: {
+      enabled: incomingPerPrayer.ogle?.enabled ?? true,
+      reminderMinutes: normalizeMinutes(incomingPerPrayer.ogle?.reminderMinutes, normalizedReminderMinutes),
+      soundMode: normalizeSoundMode(incomingPerPrayer.ogle?.soundMode ?? normalizedSoundMode)
+    },
+    ikindi: {
+      enabled: incomingPerPrayer.ikindi?.enabled ?? true,
+      reminderMinutes: normalizeMinutes(incomingPerPrayer.ikindi?.reminderMinutes, normalizedReminderMinutes),
+      soundMode: normalizeSoundMode(incomingPerPrayer.ikindi?.soundMode ?? normalizedSoundMode)
+    },
+    aksam: {
+      enabled: incomingPerPrayer.aksam?.enabled ?? true,
+      reminderMinutes: normalizeMinutes(incomingPerPrayer.aksam?.reminderMinutes, normalizedReminderMinutes),
+      soundMode: normalizeSoundMode(incomingPerPrayer.aksam?.soundMode ?? normalizedSoundMode)
+    },
+    yatsi: {
+      enabled: incomingPerPrayer.yatsi?.enabled ?? true,
+      reminderMinutes: normalizeMinutes(incomingPerPrayer.yatsi?.reminderMinutes, normalizedReminderMinutes),
+      soundMode: normalizeSoundMode(incomingPerPrayer.yatsi?.soundMode ?? normalizedSoundMode)
+    }
+  };
 
   return {
     reminderMinutes: normalizedReminderMinutes,
-    soundMode: soundMode === "silent" || soundMode === "default" || soundMode === "adhan" ? soundMode : defaultPreferences.soundMode
+    soundMode: normalizedSoundMode,
+    notifyOnTime,
+    perPrayer: { ...basePerPrayer, ...perPrayer }
   };
 }
 
@@ -194,14 +264,25 @@ export async function setPrayerNotificationsEnabled(enabled: boolean, prayerTime
 
   await cancelPrayerNotifications();
 
-  const notificationPreferences = preferences ?? (await getPrayerNotificationPreferences());
-  const reminderMinutes = notificationPreferences.reminderMinutes;
-  const exactSound = getSoundForMode(notificationPreferences.soundMode);
-  const exactChannelId = getChannelForMode(notificationPreferences.soundMode);
-  const reminderChannelId = notificationPreferences.soundMode === "silent" ? REMINDER_SILENT_CHANNEL_ID : REMINDER_CHANNEL_ID;
+  const notificationPreferences = normalizePreferences(preferences ?? (await getPrayerNotificationPreferences()));
 
   for (const prayer of prayerTimes.filter((item) => PRAYERS_WITH_NOTIFICATIONS.has(item.id))) {
+    const prayerId = prayer.id as PrayerNotifiableId;
+    const prayerConfig = notificationPreferences.perPrayer?.[prayerId] ?? {
+      enabled: true,
+      reminderMinutes: notificationPreferences.reminderMinutes,
+      soundMode: notificationPreferences.soundMode
+    };
+
+    if (!prayerConfig.enabled) {
+      continue;
+    }
+
     const { hour, minute } = parseTime(prayer.time);
+    const reminderMinutes = prayerConfig.reminderMinutes;
+    const exactSound = getSoundForMode(prayerConfig.soundMode);
+    const exactChannelId = getChannelForMode(prayerConfig.soundMode);
+    const reminderChannelId = prayerConfig.soundMode === "silent" ? REMINDER_SILENT_CHANNEL_ID : REMINDER_CHANNEL_ID;
 
     if (reminderMinutes > 0) {
       const reminder = subtractMinutes(hour, minute, reminderMinutes);
@@ -211,7 +292,7 @@ export async function setPrayerNotificationsEnabled(enabled: boolean, prayerTime
         content: {
           title: "Vakit Yaklaşıyor",
           body: `${prayer.name} vaktine ${reminderMinutes} dakika kaldı.`,
-          sound: notificationPreferences.soundMode === "silent" ? undefined : "default"
+          sound: prayerConfig.soundMode === "silent" ? undefined : "default"
         },
         trigger: {
           type: Notifications.SchedulableTriggerInputTypes.DAILY,
@@ -222,20 +303,22 @@ export async function setPrayerNotificationsEnabled(enabled: boolean, prayerTime
       });
     }
 
-    await Notifications.scheduleNotificationAsync({
-      identifier: `huzur-prayer-time-${prayer.id}`,
-      content: {
-        title: "Ezan Vakti",
-        body: `${prayer.name} vakti girdi.`,
-        sound: exactSound
-      },
-      trigger: {
-        type: Notifications.SchedulableTriggerInputTypes.DAILY,
-        hour,
-        minute,
-        channelId: exactChannelId
-      }
-    });
+    if (notificationPreferences.notifyOnTime !== false) {
+      await Notifications.scheduleNotificationAsync({
+        identifier: `huzur-prayer-time-${prayer.id}`,
+        content: {
+          title: "Ezan Vakti",
+          body: `${prayer.name} vakti girdi.`,
+          sound: exactSound
+        },
+        trigger: {
+          type: Notifications.SchedulableTriggerInputTypes.DAILY,
+          hour,
+          minute,
+          channelId: exactChannelId
+        }
+      });
+    }
   }
 
   await AsyncStorage.setItem(ENABLED_STORAGE_KEY, "true");

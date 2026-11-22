@@ -3,7 +3,7 @@ const MAX_LIMIT = 100;
 const DEFAULT_REWARD_CONFIG = {
   isActive: true,
   mode: "monthly",
-  minimumMonthlyPoints: 500,
+  minimumMonthlyPoints: 1000,
   prizeTitle: "Ayın Huzur Ödülü",
   prizeDescription: "Ay içinde en çok puanı toplayan kullanıcı ödül kazanır.",
   prizeImageUrl: "",
@@ -301,7 +301,7 @@ async function getRewardConfig() {
     ...DEFAULT_REWARD_CONFIG,
     ...config,
     isActive: config.isActive !== false,
-    minimumMonthlyPoints: normalizePoints(config.minimumMonthlyPoints || DEFAULT_REWARD_CONFIG.minimumMonthlyPoints),
+    minimumMonthlyPoints: Math.max(1000, normalizePoints(config.minimumMonthlyPoints || DEFAULT_REWARD_CONFIG.minimumMonthlyPoints)),
     prizeTitle: prizes.map((prize) => `${prize.rank}. ${prize.title}`).join(" • "),
     prizeDescription: "Ay içinde en çok puanı toplayan ilk iki kullanıcı ödül kazanır.",
     prizeImageUrl: prizes[0]?.imageUrl || "",

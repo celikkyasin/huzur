@@ -49,9 +49,10 @@ export default function RewardsScreen() {
   const rewardEligibility = rewardConfig?.eligibility;
   const currentPrize = rewardEligibility?.prize || rewardConfig?.prizes.find((prize) => prize.rank === currentRank);
   const currentClaimRank = rewardEligibility?.rank || currentRank;
+  const minimumMonthlyPoints = Math.max(1000, rewardConfig?.minimumMonthlyPoints || 1000);
   const isMonthlyWinner = Boolean(
     rewardConfig?.isActive &&
-      ((rewardEligibility?.isEligible && rewardEligibility.prize) || (currentPrize && currentRank <= 2 && monthlyPoints >= (rewardConfig.minimumMonthlyPoints || 0)))
+      ((rewardEligibility?.isEligible && rewardEligibility.prize) || (currentPrize && currentRank <= 2 && monthlyPoints >= minimumMonthlyPoints))
   );
   const lastSyncLabel = lastSyncedAt ? new Date(lastSyncedAt).toLocaleTimeString("tr-TR", { hour: "2-digit", minute: "2-digit" }) : "";
 
@@ -175,7 +176,7 @@ export default function RewardsScreen() {
                 <Text style={styles.prizeTitle}>{rewardConfig.isActive ? "Bu Ayın Ödülleri" : "Ödül sistemi pasif"}</Text>
               </View>
               <Text style={styles.prizeSubtitle}>
-                {rewardConfig.isActive ? `Ay sonunda ilk iki kullanıcı ödül kazanır. Minimum ${rewardConfig.minimumMonthlyPoints} puan gerekir.` : "Bu ay ödül başvurusu kapalı. Puanlar yine tabloda birikir."}
+                {rewardConfig.isActive ? `Ay sonunda ilk iki kullanıcı ödül kazanır. Minimum ${minimumMonthlyPoints} puan gerekir.` : "Bu ay ödül başvurusu kapalı. Puanlar yine tabloda birikir."}
               </Text>
             </View>
             {rewardConfig.isActive ? (
@@ -209,42 +210,66 @@ export default function RewardsScreen() {
 
         <View style={styles.rewardRulesPanel}>
           <View style={styles.rewardRulesHeader}>
-            <View>
+            <View style={styles.rewardRulesTitleCol}>
               <Text style={styles.rewardRulesKicker}>PUAN KAZANIMLARI</Text>
-              <Text style={styles.rewardRulesTitle}>Puanlar nasıl veriliyor?</Text>
+              <Text style={styles.rewardRulesTitle}>Puanlar nasıl kazanılır?</Text>
             </View>
             <View style={styles.rewardRulesBadge}>
-              <Ionicons name="sparkles" size={17} color={colors.gold} />
+              <Ionicons name="sparkles" size={18} color={colors.gold} />
             </View>
           </View>
-          <View style={styles.rewardRulesGrid}>
-            <View style={styles.rewardRule}>
+
+          <View style={styles.rewardRulesList}>
+            <View style={styles.rewardRuleRow}>
               <View style={styles.rewardRuleIcon}>
-                <Ionicons name="finger-print" size={17} color={colors.emerald} />
+                <Ionicons name="checkmark-done-circle" size={20} color={colors.emerald} />
               </View>
-              <Text style={styles.rewardRuleTitle}>Zikir</Text>
-              <Text style={styles.rewardRuleText}>33 zikir +3, 99 zikir toplam +10</Text>
+              <View style={styles.rewardRuleCopy}>
+                <Text style={styles.rewardRuleTitle}>Namaz Takibi</Text>
+                <Text style={styles.rewardRuleText}>Kılınan her vakit için +2 puan, 5 vaktin tamamlandığı gün +10 bonus puan</Text>
+              </View>
+              <View style={styles.rewardRulePill}>
+                <Text style={styles.rewardRulePillText}>+2 / +10</Text>
+              </View>
             </View>
-            <View style={styles.rewardRule}>
+
+            <View style={styles.rewardRuleRow}>
               <View style={styles.rewardRuleIcon}>
-                <Ionicons name="share-social" size={17} color={colors.emerald} />
+                <Ionicons name="finger-print" size={20} color={colors.emerald} />
               </View>
-              <Text style={styles.rewardRuleTitle}>Paylaşım</Text>
-              <Text style={styles.rewardRuleText}>Cuma günü ilk paylaşım +2</Text>
+              <View style={styles.rewardRuleCopy}>
+                <Text style={styles.rewardRuleTitle}>Zikirmatik</Text>
+                <Text style={styles.rewardRuleText}>33 zikir tamamlandığında +3 puan, 99 zikir tamamlandığında toplam +10 puan</Text>
+              </View>
+              <View style={styles.rewardRulePill}>
+                <Text style={styles.rewardRulePillText}>+3 / +10</Text>
+              </View>
             </View>
-            <View style={styles.rewardRule}>
+
+            <View style={styles.rewardRuleRow}>
               <View style={styles.rewardRuleIcon}>
-                <Ionicons name="play-circle" size={17} color={colors.emerald} />
+                <Ionicons name="headset" size={20} color={colors.emerald} />
               </View>
-              <Text style={styles.rewardRuleTitle}>Dinleme</Text>
-              <Text style={styles.rewardRuleText}>Dinlenen her dakika +1</Text>
+              <View style={styles.rewardRuleCopy}>
+                <Text style={styles.rewardRuleTitle}>Kur'an Dinleme & Hatim</Text>
+                <Text style={styles.rewardRuleText}>Sesli Kur'an dinlenen her dakika için +1 puan</Text>
+              </View>
+              <View style={styles.rewardRulePill}>
+                <Text style={styles.rewardRulePillText}>+1 / dk</Text>
+              </View>
             </View>
-            <View style={styles.rewardRule}>
+
+            <View style={styles.rewardRuleRow}>
               <View style={styles.rewardRuleIcon}>
-                <Ionicons name="checkmark-circle" size={17} color={colors.emerald} />
+                <Ionicons name="share-social" size={20} color={colors.emerald} />
               </View>
-              <Text style={styles.rewardRuleTitle}>Namaz</Text>
-              <Text style={styles.rewardRuleText}>Vakit +2, tam gün +10</Text>
+              <View style={styles.rewardRuleCopy}>
+                <Text style={styles.rewardRuleTitle}>Cuma Mesajı Paylaşımı</Text>
+                <Text style={styles.rewardRuleText}>Cuma günleri yapılan ilk mesaj paylaşımı için +2 puan</Text>
+              </View>
+              <View style={styles.rewardRulePill}>
+                <Text style={styles.rewardRulePillText}>+2</Text>
+              </View>
             </View>
           </View>
         </View>
@@ -548,71 +573,91 @@ const styles = StyleSheet.create({
     backgroundColor: colors.paper,
     borderWidth: 1,
     borderColor: colors.line,
-    padding: 14
+    padding: 16
   },
   rewardRulesHeader: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
     gap: 12,
-    marginBottom: 12
+    marginBottom: 14
+  },
+  rewardRulesTitleCol: {
+    flex: 1,
+    minWidth: 0
   },
   rewardRulesKicker: {
     color: colors.gold,
-    fontSize: 10,
-    letterSpacing: 0,
+    fontSize: 11,
+    letterSpacing: 0.4,
     fontWeight: "900"
   },
   rewardRulesTitle: {
     color: colors.ink,
     fontFamily: typography.title,
-    fontSize: 20,
-    lineHeight: 25,
-    marginTop: 2,
+    fontSize: 21,
+    lineHeight: 26,
+    marginTop: 3,
     fontWeight: "900"
   },
   rewardRulesBadge: {
-    width: 38,
-    height: 38,
+    width: 40,
+    height: 40,
     borderRadius: radii.round,
     alignItems: "center",
     justifyContent: "center",
     backgroundColor: colors.goldSoft
   },
-  rewardRulesGrid: {
-    flexDirection: "row",
-    flexWrap: "wrap",
+  rewardRulesList: {
     gap: 10
   },
-  rewardRule: {
-    width: "48%",
-    minHeight: 118,
+  rewardRuleRow: {
     borderRadius: radii.md,
     backgroundColor: colors.white,
     borderWidth: 1,
     borderColor: "rgba(7,94,71,0.1)",
-    padding: 12
+    paddingHorizontal: 12,
+    paddingVertical: 12,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12
   },
   rewardRuleIcon: {
-    width: 32,
-    height: 32,
+    width: 42,
+    height: 42,
     borderRadius: radii.round,
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: colors.emeraldSoft,
-    marginBottom: 10
+    backgroundColor: colors.emeraldSoft
+  },
+  rewardRuleCopy: {
+    flex: 1,
+    minWidth: 0
   },
   rewardRuleTitle: {
     color: colors.ink,
-    fontSize: 13,
+    fontSize: 15,
     fontWeight: "900"
   },
   rewardRuleText: {
     color: colors.muted,
-    fontSize: 11,
-    lineHeight: 16,
-    marginTop: 4,
-    fontWeight: "800"
+    fontSize: 12,
+    lineHeight: 17,
+    marginTop: 3,
+    fontWeight: "700"
+  },
+  rewardRulePill: {
+    borderRadius: radii.round,
+    backgroundColor: colors.emeraldSoft,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    alignItems: "center",
+    justifyContent: "center"
+  },
+  rewardRulePillText: {
+    color: colors.emerald,
+    fontSize: 12,
+    fontWeight: "900"
   },
   leaderboard: {
     marginTop: 16,
