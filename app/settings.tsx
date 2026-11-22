@@ -24,7 +24,7 @@ import { usePrayerTimesStore } from "@/store/prayerTimesStore";
 import { useRewardStore } from "@/store/rewardStore";
 import { colors, radii, shadows, typography } from "@/theme";
 
-const APP_VERSION = "1.0.91";
+const APP_VERSION = "1.0.92";
 const SUPPORT_EMAIL = "celikkyasin@gmail.com";
 
 type FeedbackModalState = {
@@ -1116,9 +1116,11 @@ const styles = StyleSheet.create({
   perPrayerNameRow: {
     flexDirection: "row",
     alignItems: "center",
+    justifyContent: "space-between",
     gap: 8
   },
   perPrayerName: {
+    flex: 1,
     color: colors.ink,
     fontSize: 14,
     fontWeight: "900"
@@ -1127,7 +1129,10 @@ const styles = StyleSheet.create({
     borderRadius: radii.sm,
     backgroundColor: colors.emeraldSoft,
     paddingHorizontal: 7,
-    paddingVertical: 2
+    paddingVertical: 2,
+    minWidth: 46,
+    alignItems: "center",
+    justifyContent: "center"
   },
   perPrayerTimeText: {
     color: colors.emerald,
