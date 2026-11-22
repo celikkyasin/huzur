@@ -2,11 +2,15 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import { mosques as fallbackMosques } from "@/data/mock";
 import type { Mosque } from "@/types";
 
-const OVERPASS_URLS = ["https://overpass.kumi.systems/api/interpreter", "https://overpass-api.de/api/interpreter"];
-const CACHE_KEY_PREFIX = "huzur.nearby-mosques.v1";
+const OVERPASS_URLS = [
+  "https://overpass-api.de/api/interpreter",
+  "https://overpass.kumi.systems/api/interpreter",
+  "https://maps.mail.ru/osm/tools/overpass/api/interpreter"
+];
+const CACHE_KEY_PREFIX = "huzur.nearby-mosques.v2";
 const SEARCH_RADIUS_METERS = 8000;
-const MAX_MOSQUE_RESULTS = 12;
-const OVERPASS_TIMEOUT_MS = 4500;
+const MAX_MOSQUE_RESULTS = 15;
+const OVERPASS_TIMEOUT_MS = 12000;
 
 type MosqueLocation = {
   latitude?: number;
@@ -107,7 +111,7 @@ function buildMosqueName(tags: Record<string, string | undefined>) {
     cleanName(tags.name) ||
     cleanName(tags.official_name) ||
     cleanName(tags.alt_name) ||
-    cleanName(tags.operator);
+    cleanName(tags.short_name);
 
   if (directName) {
     return directName;
@@ -119,7 +123,12 @@ function buildMosqueName(tags: Record<string, string | undefined>) {
     return `${neighbourhood} Camii`;
   }
 
-  return undefined;
+  const street = cleanText(tags["addr:street"]);
+  if (street) {
+    return `${street} Camii`;
+  }
+
+  return "Yakın Camii";
 }
 
 function normalizeCachedMosque(mosque: Mosque): Mosque {
@@ -131,18 +140,7 @@ function normalizeCachedMosque(mosque: Mosque): Mosque {
 }
 
 function buildQuery(latitude: number, longitude: number) {
-  return `
-    [out:json][timeout:25];
-    (
-      node["amenity"="place_of_worship"]["religion"="muslim"](around:${SEARCH_RADIUS_METERS},${latitude},${longitude});
-      way["amenity"="place_of_worship"]["religion"="muslim"](around:${SEARCH_RADIUS_METERS},${latitude},${longitude});
-      relation["amenity"="place_of_worship"]["religion"="muslim"](around:${SEARCH_RADIUS_METERS},${latitude},${longitude});
-      node["building"="mosque"](around:${SEARCH_RADIUS_METERS},${latitude},${longitude});
-      way["building"="mosque"](around:${SEARCH_RADIUS_METERS},${latitude},${longitude});
-      relation["building"="mosque"](around:${SEARCH_RADIUS_METERS},${latitude},${longitude});
-    );
-    out center tags;
-  `;
+  return `[out:json][timeout:15];(node["amenity"="place_of_worship"]["religion"="muslim"](around:${SEARCH_RADIUS_METERS},${latitude},${longitude});way["amenity"="place_of_worship"]["religion"="muslim"](around:${SEARCH_RADIUS_METERS},${latitude},${longitude});relation["amenity"="place_of_worship"]["religion"="muslim"](around:${SEARCH_RADIUS_METERS},${latitude},${longitude});node["building"="mosque"](around:${SEARCH_RADIUS_METERS},${latitude},${longitude});way["building"="mosque"](around:${SEARCH_RADIUS_METERS},${latitude},${longitude});relation["building"="mosque"](around:${SEARCH_RADIUS_METERS},${latitude},${longitude}););out center tags;`;
 }
 
 function buildCacheKey(latitude: number, longitude: number) {
@@ -204,15 +202,19 @@ function mapElements(elements: OverpassElement[], latitude: number, longitude: n
     .map(({ distanceMeters: _distanceMeters, ...mosque }) => mosque);
 }
 
-async function fetchWithTimeout(url: string) {
+async function fetchOverpassEndpoint(endpoint: string, query: string) {
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), OVERPASS_TIMEOUT_MS);
 
   try {
-    return await fetch(url, {
+    return await fetch(endpoint, {
+      method: "POST",
       headers: {
-        Accept: "application/json"
+        Accept: "application/json",
+        "Content-Type": "application/x-www-form-urlencoded; charset=UTF-8",
+        "User-Agent": "HuzurApp/1.0"
       },
+      body: `data=${encodeURIComponent(query)}`,
       signal: controller.signal
     });
   } finally {
@@ -238,6 +240,95 @@ export async function getCachedNearbyMosques(location: MosqueLocation): Promise<
   };
 }
 
+type NominatimPlace = {
+  place_id: number;
+  lat?: string;
+  lon?: string;
+  name?: string;
+  display_name?: string;
+  address?: {
+    road?: string;
+    neighbourhood?: string;
+    suburb?: string;
+    town?: string;
+    city?: string;
+  };
+};
+
+async function fetchNominatimMosques(latitude: number, longitude: number): Promise<Mosque[]> {
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 9000);
+
+  try {
+    const delta = 0.08;
+    const viewbox = `${longitude - delta},${latitude + delta},${longitude + delta},${latitude - delta}`;
+    const url = `https://nominatim.openstreetmap.org/search?format=jsonv2&q=cami&bounded=1&viewbox=${viewbox}&limit=25&addressdetails=1`;
+    const response = await fetch(url, {
+      headers: {
+        Accept: "application/json",
+        "Accept-Language": "tr",
+        "User-Agent": "HuzurApp/1.0"
+      },
+      signal: controller.signal
+    });
+
+    if (!response.ok) {
+      return [];
+    }
+
+    const places = (await response.json()) as NominatimPlace[];
+    const seen = new Set<string>();
+
+    return (Array.isArray(places) ? places : [])
+      .map((place) => {
+        const mosqueLat = Number(place.lat);
+        const mosqueLon = Number(place.lon);
+
+        if (!Number.isFinite(mosqueLat) || !Number.isFinite(mosqueLon)) {
+          return undefined;
+        }
+
+        const rawName = place.name || place.display_name?.split(",")[0];
+        const name = cleanName(rawName);
+        if (!name) {
+          return undefined;
+        }
+
+        const distanceMeters = calculateDistanceMeters(latitude, longitude, mosqueLat, mosqueLon);
+        const dedupeKey = `${name.toLocaleLowerCase("tr-TR")}-${mosqueLat.toFixed(4)}-${mosqueLon.toFixed(4)}`;
+        if (seen.has(dedupeKey)) {
+          return undefined;
+        }
+        seen.add(dedupeKey);
+
+        const addrParts = [
+          place.address?.neighbourhood || place.address?.suburb,
+          place.address?.road,
+          place.address?.town || place.address?.city
+        ].filter(Boolean);
+
+        return {
+          id: `nom-${place.place_id}`,
+          name,
+          distance: formatDistance(distanceMeters),
+          address: addrParts.length ? addrParts.slice(0, 3).join(", ") : "Haritada konumlu",
+          walkingTime: formatWalkingTime(distanceMeters),
+          latitude: mosqueLat,
+          longitude: mosqueLon,
+          distanceMeters
+        };
+      })
+      .filter((item): item is MappedMosque => Boolean(item))
+      .sort((a, b) => a.distanceMeters - b.distanceMeters)
+      .slice(0, MAX_MOSQUE_RESULTS)
+      .map(({ distanceMeters: _distanceMeters, ...mosque }) => mosque);
+  } catch {
+    return [];
+  } finally {
+    clearTimeout(timeout);
+  }
+}
+
 export async function fetchNearbyMosques(location: MosqueLocation): Promise<NearbyMosquesResult> {
   if (typeof location.latitude !== "number" || typeof location.longitude !== "number") {
     return {
@@ -249,29 +340,31 @@ export async function fetchNearbyMosques(location: MosqueLocation): Promise<Near
   const cacheKey = buildCacheKey(location.latitude, location.longitude);
 
   try {
-    let payload: OverpassResponse | undefined;
-    const query = encodeURIComponent(buildQuery(location.latitude, location.longitude));
+    let nearbyMosques: Mosque[] = [];
+    const rawQuery = buildQuery(location.latitude, location.longitude);
 
     for (const endpoint of OVERPASS_URLS) {
       try {
-        const response = await fetchWithTimeout(`${endpoint}?data=${query}`);
+        const response = await fetchOverpassEndpoint(endpoint, rawQuery);
 
         if (!response.ok) {
           continue;
         }
 
-        payload = (await response.json()) as OverpassResponse;
-        break;
+        const payload = (await response.json()) as OverpassResponse;
+        const mapped = mapElements(payload.elements || [], location.latitude, location.longitude);
+        if (mapped.length > 0) {
+          nearbyMosques = mapped;
+          break;
+        }
       } catch {
         // Bir sonraki Overpass aynasına geç.
       }
     }
 
-    if (!payload) {
-      throw new Error("Cami servisi yanıt vermedi.");
+    if (!nearbyMosques.length) {
+      nearbyMosques = await fetchNominatimMosques(location.latitude, location.longitude);
     }
-
-    const nearbyMosques = mapElements(payload.elements || [], location.latitude, location.longitude);
 
     if (!nearbyMosques.length) {
       throw new Error("Yakında cami bulunamadı.");

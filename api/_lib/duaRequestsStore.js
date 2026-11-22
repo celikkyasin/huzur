@@ -101,9 +101,33 @@ function parseRequest(value) {
   }
 }
 
+function deduplicateDuaList(items) {
+  const seenIds = new Set();
+  const seenFingerprints = new Set();
+  const unique = [];
+
+  for (const item of items) {
+    if (!item || !item.id || seenIds.has(item.id)) {
+      continue;
+    }
+
+    const fingerprint = `${String(item.name || "").trim().toLocaleLowerCase("tr-TR")}|${String(item.text || "").trim().toLocaleLowerCase("tr-TR")}`;
+    if (seenFingerprints.has(fingerprint)) {
+      continue;
+    }
+
+    seenIds.add(item.id);
+    seenFingerprints.add(fingerprint);
+    unique.push(item);
+  }
+
+  return unique;
+}
+
 async function listDuaRequests() {
   const values = await redisCommand("LRANGE", "huzur:dua:requests", 0, 49);
-  const requests = Array.isArray(values) ? values.map(parseRequest).filter(Boolean) : [];
+  const parsed = Array.isArray(values) ? values.map(parseRequest).filter(Boolean) : [];
+  const requests = deduplicateDuaList(parsed);
   return { ok: true, requests };
 }
 
@@ -113,6 +137,17 @@ async function createDuaRequest(payload) {
 
   if (!text) {
     return { ok: false, statusCode: 400, error: "Dua metni gerekli." };
+  }
+
+  const existing = await listDuaRequests();
+  const duplicate = existing.requests.find(
+    (item) =>
+      String(item.name || "").trim().toLocaleLowerCase("tr-TR") === name.toLocaleLowerCase("tr-TR") &&
+      String(item.text || "").trim().toLocaleLowerCase("tr-TR") === text.toLocaleLowerCase("tr-TR")
+  );
+
+  if (duplicate) {
+    return { ok: true, request: duplicate };
   }
 
   const request = {
@@ -135,17 +170,23 @@ async function prayForDuaRequest(payload) {
     return { ok: false, statusCode: 400, error: "Dua talebi bulunamadı." };
   }
 
-  const list = await listDuaRequests();
-  const nextRequests = list.requests.map((request) => (request.id === id ? { ...request, prayerCount: Number(request.prayerCount || 0) + 1 } : request));
-  const updated = nextRequests.find((request) => request.id === id);
-
-  if (!updated) {
+  const values = await redisCommand("LRANGE", "huzur:dua:requests", 0, 49);
+  if (!Array.isArray(values)) {
     return { ok: false, statusCode: 404, error: "Dua talebi bulunamadı." };
   }
 
-  await redisCommand("DEL", "huzur:dua:requests");
-  for (let index = nextRequests.length - 1; index >= 0; index -= 1) {
-    await redisCommand("LPUSH", "huzur:dua:requests", JSON.stringify(nextRequests[index]));
+  let updated = null;
+  for (let index = 0; index < values.length; index += 1) {
+    const item = parseRequest(values[index]);
+    if (item && item.id === id) {
+      updated = { ...item, prayerCount: Number(item.prayerCount || 0) + 1 };
+      await redisCommand("LSET", "huzur:dua:requests", index, JSON.stringify(updated));
+      break;
+    }
+  }
+
+  if (!updated) {
+    return { ok: false, statusCode: 404, error: "Dua talebi bulunamadı." };
   }
 
   return { ok: true, request: updated };

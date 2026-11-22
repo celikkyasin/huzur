@@ -71,10 +71,12 @@ type DiyanetCollectionResponse<T> =
 
 const AL_QURAN_API_BASE = "https://api.alquran.cloud/v1";
 const TURKISH_EDITION = "tr.diyanet";
+const DEFAULT_API_URL = "https://huzur-six.vercel.app";
 const APP_API_URL = process.env.EXPO_PUBLIC_REWARDS_API_URL;
 
 function getAppApiUrl() {
-  return APP_API_URL?.trim().replace(/\/$/, "");
+  const envUrl = APP_API_URL?.trim();
+  return (envUrl && envUrl.startsWith("http") ? envUrl : DEFAULT_API_URL).replace(/\/$/, "");
 }
 
 function buildApiRequestUrl(apiUrl: string, path: string) {

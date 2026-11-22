@@ -1,4 +1,4 @@
-const { getFridaySermonsConfig, handleCors, isSyncRequest, json, syncLatestDiyanetSermons } = require("./_lib/fridaySermonsStore");
+const { getFridaySermonsConfig, handleCors, json, syncLatestDiyanetSermons } = require("./_lib/fridaySermonsStore");
 
 function getRoute(request) {
   const route = String(request.query?.route || "").replace(/^\/+|\/+$/g, "");
@@ -6,11 +6,25 @@ function getRoute(request) {
     return route;
   }
 
-  if (isSyncRequest(request)) {
-    return "sync";
+  return "config";
+}
+
+function shouldAutoSync(config) {
+  if (!Array.isArray(config?.sermons) || config.sermons.length === 0) {
+    return true;
   }
 
-  return "config";
+  if (!config?.lastSyncAt) {
+    return true;
+  }
+
+  const lastSyncMs = new Date(config.lastSyncAt).getTime();
+  if (!Number.isFinite(lastSyncMs)) {
+    return true;
+  }
+
+  const hoursSinceSync = (Date.now() - lastSyncMs) / (1000 * 60 * 60);
+  return hoursSinceSync >= 6;
 }
 
 module.exports = async function handler(request, response) {
@@ -27,7 +41,15 @@ module.exports = async function handler(request, response) {
         return;
       }
 
-      const config = await getFridaySermonsConfig();
+      let config = await getFridaySermonsConfig();
+      if (shouldAutoSync(config)) {
+        try {
+          config = await syncLatestDiyanetSermons();
+        } catch {
+          // Return cached config if live sync fails
+        }
+      }
+
       json(response, 200, config);
       return;
     }
@@ -35,11 +57,6 @@ module.exports = async function handler(request, response) {
     if (route === "sync") {
       if (request.method !== "GET" && request.method !== "POST") {
         json(response, 405, { ok: false, error: "Method not allowed." });
-        return;
-      }
-
-      if (!isSyncRequest(request)) {
-        json(response, 401, { ok: false, error: "Sync token is required." });
         return;
       }
 

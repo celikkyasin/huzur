@@ -12,7 +12,7 @@ import { colors, radii, typography } from "@/theme";
 
 export default function FridaySermonsScreen() {
   const [khutbahs, setKhutbahs] = useState(() => mergeFridayKhutbahs(null));
-  const [openMonthKey, setOpenMonthKey] = useState(latestFridayKhutbah.monthKey);
+  const [openMonthKey, setOpenMonthKey] = useState(() => mergeFridayKhutbahs(null)[0]?.monthKey || latestFridayKhutbah.monthKey);
   const [openVideoId, setOpenVideoId] = useState<string | null>(null);
   const months = useMemo(() => buildFridayKhutbahMonths(khutbahs), [khutbahs]);
   const latestKhutbah = khutbahs[0] || latestFridayKhutbah;
@@ -27,7 +27,7 @@ export default function FridaySermonsScreen() {
 
       const merged = mergeFridayKhutbahs(remoteKhutbahs);
       setKhutbahs(merged);
-      setOpenMonthKey((current) => current || merged[0]?.monthKey || latestFridayKhutbah.monthKey);
+      setOpenMonthKey(merged[0]?.monthKey || latestFridayKhutbah.monthKey);
     });
 
     return () => {

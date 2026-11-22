@@ -23,8 +23,6 @@ const menuItems: MenuItem[] = [
   { title: "Cuma Hutbeleri", subtitle: "Haftalık hutbeleri oku", icon: "document-text", route: "/friday-sermons", badge: "Yeni" },
   { title: "Zekat Hesapla", subtitle: "Zekat ve fitre hesabı", icon: "calculator", route: "/zakat-calculator", badge: "Yeni" },
   { title: "Dini Günler", subtitle: "2026 Diyanet dini günler takvimi", icon: "calendar-number", route: "/religious-days", badge: "Yeni" },
-  { title: "Kur'an Radyo", subtitle: "Diyanet Kur'an Radyo canlı dinle", icon: "radio", route: "/quran-radio", badge: "Yeni" },
-  { title: "Kabe Canlı", subtitle: "Kabe'den canlı yayın", icon: "videocam", route: "/kaaba-live", badge: "Yeni" },
   { title: "Dua İste", subtitle: "Dua talebi oluştur ve takip et", icon: "heart", route: "/dua-requests", badge: "Yeni" },
   { title: "Puan Tablosu ve Ödüller", subtitle: "Sıralama, ödüller ve başvuru alanı", icon: "trophy", route: "/rewards" },
   { title: "Ayarlar", subtitle: "Bildirimler, profil ve uygulama tercihleri", icon: "settings", route: "/settings" }

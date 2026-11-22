@@ -42,6 +42,9 @@ export default function RootLayout() {
         <Stack.Screen name="khatm-tracker" />
         <Stack.Screen name="prayer-continuity" />
         <Stack.Screen name="qada-prayers" />
+        <Stack.Screen name="religious-days" />
+        <Stack.Screen name="dua-requests" />
+        <Stack.Screen name="zakat-calculator" />
         <Stack.Screen name="rewards" />
         <Stack.Screen name="story-editor" />
         <Stack.Screen name="settings" />

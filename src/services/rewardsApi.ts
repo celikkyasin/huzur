@@ -1,5 +1,6 @@
 import type { RewardTransaction } from "@/store/rewardStore";
 
+const DEFAULT_API_URL = "https://huzur-six.vercel.app";
 const REWARDS_API_URL = process.env.EXPO_PUBLIC_REWARDS_API_URL;
 const REQUEST_TIMEOUT_MS = 7000;
 
@@ -58,11 +59,12 @@ export type RewardClaimPayload = {
 };
 
 function hasRewardsApi() {
-  return typeof REWARDS_API_URL === "string" && REWARDS_API_URL.trim().length > 0;
+  return true;
 }
 
 function getRewardsApiUrl() {
-  return REWARDS_API_URL?.trim().replace(/\/$/, "");
+  const envUrl = REWARDS_API_URL?.trim();
+  return (envUrl && envUrl.startsWith("http") ? envUrl : DEFAULT_API_URL).replace(/\/$/, "");
 }
 
 async function requestJson<T>(path: string, init?: RequestInit): Promise<T | null> {

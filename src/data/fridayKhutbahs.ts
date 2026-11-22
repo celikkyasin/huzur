@@ -62,7 +62,59 @@ const khutbahPreviews: Record<string, string> = {
   "2026-05-15":
     "Toplumsal sorumluluk, komşuluk, yardımlaşma ve ortak iyiliği koruma bilinci üzerinde durulur.",
   "2026-05-22":
-    "Söz ahlakı, güzel üslup, doğru haber ve sosyal medyada kul hakkına riayet etme sorumluluğu hatırlatılır."
+    "Söz ahlakı, güzel üslup, doğru haber ve sosyal medyada kul hakkına riayet etme sorumluluğu hatırlatılır.",
+  "2026-05-29":
+    "İstanbul'un fethi vesilesiyle fetih bilinci, imar, ihya ve medeniyet anlayışımız anlatılır.",
+  "2026-06-05":
+    "Dünya Çevre Günü vesilesiyle doğayı koruma, israftan kaçınma ve nimetlere şükretme bilinci vurgulanır.",
+  "2026-06-12":
+    "Kurban ibadetinin anlamı, Hz. İbrahim ve Hz. İsmail'in teslimiyeti, infak ve muhtaçlara ulaşma sorumluluğu.",
+  "2026-06-19":
+    "Babalar Günü vesilesiyle ailede adalet, sevgi, merhamet ve evlatlarımıza güzel ahlak aşılama.",
+  "2026-06-26":
+    "Çocuklarımızın camiyle, Kur'an'la ve güzel ahlakla buluşmasının önemi ve yaz kurslarının bereketi.",
+  "2026-07-03":
+    "Hicri 1448 yeni yılı vesilesiyle hicretin manası, ömür sermayesini hayırla değerlendirme bilinci.",
+  "2026-07-10":
+    "Yaz tatili ve ziyaretler vesilesiyle anne-baba rızası, akraba ziyareti ve gönül alma borcumuz.",
+  "2026-07-17":
+    "15 Temmuz vesilesiyle vatan, bayrak, bağımsızlık ve ümmet bilinciyle vatanı müdafaa etme ruhu.",
+  "2026-07-24":
+    "Muharrem ayının fazileti, Aşure gününün paylaşma ruhu ve Kerbela'dan çıkarılacak birlik dersleri.",
+  "2026-07-31":
+    "Alışverişte dürüstlük, tartıda adalet, ölçüde doğruluk ve kul hakkının hassasiyeti.",
+  "2026-08-07":
+    "İnsan ilişkilerinde tatlı dil, güler yüz, dedikodudan sakınma ve yapıcı iletişim.",
+  "2026-08-14":
+    "Gençlerimizin milli ve manevi değerlerle donatılması, iffet, haya ve sağlam karakter inşası.",
+  "2026-08-21":
+    "30 Ağustos zafer haftası vesilesiyle vatan savunması, aziz şehitlerimiz ve kahraman gazilerimize vefa.",
+  "2026-08-28":
+    "Yeni eğitim-öğretim yılı öncesinde faydalı ilim öğrenme, ahlaklı nesiller yetiştirme ve bilgi sorumluluğu.",
+  "2026-09-04":
+    "Mevlid-i Nebi vesilesiyle Peygamber Efendimizin örnek ahlakı, merhameti ve aile hayatındaki rehberliği.",
+  "2026-09-11":
+    "Eğitim yuvalarının açılışıyla birlikte ilim, hikmet, öğretmen-öğrenci adabı ve gençliğe sahip çıkma sorumluluğu.",
+  "2026-09-18":
+    "Gazilik ruhu, vatan emaneti, toplumsal huzur ve kardeşlik bağlarını güçlendirme bilinci.",
+  "2026-09-25":
+    "İnfak, sadaka ve yardımlaşma ahlakının bereketi; ihtiyaç sahiplerini gözetmenin mümince sorumluluğu.",
+  "2026-10-02":
+    "Camiler ve Din Görevlileri Haftası vesilesiyle caminin hayatın merkezindeki yeri ve cemaat bilinci.",
+  "2026-10-09":
+    "Ailede huzur, eşler arası karşılıklı saygı, sabır ve sevgi dilini korumanın önemi.",
+  "2026-10-16":
+    "Helal lokma, dürüst kazanç, kanaat ve rızıkta bereketin anahtarları.",
+  "2026-10-23":
+    "Cumhuriyet, ortak vatan bilinci, birlik ve beraberlik içinde geleceğe yürüme iradesi.",
+  "2026-10-30":
+    "Komşuluk hakkı, selamlaşma, tebessüm ve mahalle kültürümüzde yardımlaşma adabı.",
+  "2026-11-06":
+    "Ahiret bilinci, dünya hayatının geçiciliği ve salih amellerle ebedi yurdu imar etmek.",
+  "2026-11-13":
+    "Anne-babaya iyilik, büyüklere hürmet ve hayır dualarını kazanmanın dünya ve ahiret bereketi.",
+  "2026-11-20":
+    "Çocuklarımızı sevgi, merhamet ve güzel ahlakla yetiştirme sorumluluğumuz; emanet bilinci."
 };
 
 export function getKhutbahPreview(id: string) {
@@ -364,6 +416,292 @@ export const fridayKhutbahs: FridayKhutbah[] = [
     sourceName: "Diyanet TV",
     sourceUrl: "https://www.diyanet.tv/cuma-hutbesi-canli-cuma-sevinci/video/soz-ahlaki-ve-sosyal-medya-cuma-hutbesi-22-mayis-2026",
     youtubeVideoId: "YqIV-xudAsM"
+  },
+  {
+    id: "2026-05-29",
+    isoDate: "2026-05-29",
+    date: "29 Mayıs 2026",
+    monthKey: "2026-05",
+    monthLabel: "Mayıs 2026",
+    title: "Fetih Bilinci ve Şehir Medeniyeti",
+    summary: "Diyanet Haber tarafından yayımlanan 29 Mayıs 2026 Cuma hutbesi kaydı.",
+    sourceName: "Diyanet Haber",
+    sourceUrl: "https://www.diyanethaber.com.tr/hutbeler"
+  },
+  {
+    id: "2026-06-05",
+    isoDate: "2026-06-05",
+    date: "5 Haziran 2026",
+    monthKey: "2026-06",
+    monthLabel: "Haziran 2026",
+    title: "Çevre Ahlakı ve Emanet Bilinci",
+    summary: "Diyanet TV arşivinde yer alan 5 Haziran 2026 Cuma hutbesi kaydı.",
+    sourceName: "Diyanet TV",
+    sourceUrl: "https://www.diyanet.tv/cuma-hutbesi-canli-cuma-sevinci/bolumler"
+  },
+  {
+    id: "2026-06-12",
+    isoDate: "2026-06-12",
+    date: "12 Haziran 2026",
+    monthKey: "2026-06",
+    monthLabel: "Haziran 2026",
+    title: "Kurban İbadeti ve Paylaşma Kardeşliği",
+    summary: "Diyanet TV arşivinde yer alan 12 Haziran 2026 Cuma hutbesi kaydı.",
+    sourceName: "Diyanet TV",
+    sourceUrl: "https://www.diyanet.tv/cuma-hutbesi-canli-cuma-sevinci/bolumler"
+  },
+  {
+    id: "2026-06-19",
+    isoDate: "2026-06-19",
+    date: "19 Haziran 2026",
+    monthKey: "2026-06",
+    monthLabel: "Haziran 2026",
+    title: "Baba Kucağı ve Ailede Sevgi Dili",
+    summary: "Diyanet Haber tarafından yayımlanan 19 Haziran 2026 Cuma hutbesi kaydı.",
+    sourceName: "Diyanet Haber",
+    sourceUrl: "https://www.diyanethaber.com.tr/hutbeler"
+  },
+  {
+    id: "2026-06-26",
+    isoDate: "2026-06-26",
+    date: "26 Haziran 2026",
+    monthKey: "2026-06",
+    monthLabel: "Haziran 2026",
+    title: "Yaz Kur'an Kursları ve Çocuklarımız",
+    summary: "Diyanet TV arşivinde yer alan 26 Haziran 2026 Cuma hutbesi kaydı.",
+    sourceName: "Diyanet TV",
+    sourceUrl: "https://www.diyanet.tv/cuma-hutbesi-canli-cuma-sevinci/bolumler"
+  },
+  {
+    id: "2026-07-03",
+    isoDate: "2026-07-03",
+    date: "3 Temmuz 2026",
+    monthKey: "2026-07",
+    monthLabel: "Temmuz 2026",
+    title: "Hicri Yeni Yıl ve Zaman Bilinci",
+    summary: "Diyanet TV arşivinde yer alan 3 Temmuz 2026 Cuma hutbesi kaydı.",
+    sourceName: "Diyanet TV",
+    sourceUrl: "https://www.diyanet.tv/cuma-hutbesi-canli-cuma-sevinci/bolumler"
+  },
+  {
+    id: "2026-07-10",
+    isoDate: "2026-07-10",
+    date: "10 Temmuz 2026",
+    monthKey: "2026-07",
+    monthLabel: "Temmuz 2026",
+    title: "Sıla-i Rahim ve Akrabalık Hukuku",
+    summary: "Diyanet Haber tarafından yayımlanan 10 Temmuz 2026 Cuma hutbesi kaydı.",
+    sourceName: "Diyanet Haber",
+    sourceUrl: "https://www.diyanethaber.com.tr/hutbeler"
+  },
+  {
+    id: "2026-07-17",
+    isoDate: "2026-07-17",
+    date: "17 Temmuz 2026",
+    monthKey: "2026-07",
+    monthLabel: "Temmuz 2026",
+    title: "Milli İrade, Vatan Sevgisi ve Birlik Bilinci",
+    summary: "Diyanet TV arşivinde yer alan 17 Temmuz 2026 Cuma hutbesi kaydı.",
+    sourceName: "Diyanet TV",
+    sourceUrl: "https://www.diyanet.tv/cuma-hutbesi-canli-cuma-sevinci/bolumler"
+  },
+  {
+    id: "2026-07-24",
+    isoDate: "2026-07-24",
+    date: "24 Temmuz 2026",
+    monthKey: "2026-07",
+    monthLabel: "Temmuz 2026",
+    title: "Muharrem Ayı ve Aşure Bereketi",
+    summary: "Diyanet TV arşivinde yer alan 24 Temmuz 2026 Cuma hutbesi kaydı.",
+    sourceName: "Diyanet TV",
+    sourceUrl: "https://www.diyanet.tv/cuma-hutbesi-canli-cuma-sevinci/bolumler"
+  },
+  {
+    id: "2026-07-31",
+    isoDate: "2026-07-31",
+    date: "31 Temmuz 2026",
+    monthKey: "2026-07",
+    monthLabel: "Temmuz 2026",
+    title: "Kul Hakkı ve Ticaret Ahlakı",
+    summary: "Diyanet Haber tarafından yayımlanan 31 Temmuz 2026 Cuma hutbesi kaydı.",
+    sourceName: "Diyanet Haber",
+    sourceUrl: "https://www.diyanethaber.com.tr/hutbeler"
+  },
+  {
+    id: "2026-08-07",
+    isoDate: "2026-08-07",
+    date: "7 Ağustos 2026",
+    monthKey: "2026-08",
+    monthLabel: "Ağustos 2026",
+    title: "Saf Kelam ve Gönül Dili: Tatlı Sözün Gücü",
+    summary: "Diyanet TV arşivinde yer alan 7 Ağustos 2026 Cuma hutbesi kaydı.",
+    sourceName: "Diyanet TV",
+    sourceUrl: "https://www.diyanet.tv/cuma-hutbesi-canli-cuma-sevinci/bolumler"
+  },
+  {
+    id: "2026-08-14",
+    isoDate: "2026-08-14",
+    date: "14 Ağustos 2026",
+    monthKey: "2026-08",
+    monthLabel: "Ağustos 2026",
+    title: "Gençlik, İffet ve Geleceğin İnşası",
+    summary: "Diyanet TV arşivinde yer alan 14 Ağustos 2026 Cuma hutbesi kaydı.",
+    sourceName: "Diyanet TV",
+    sourceUrl: "https://www.diyanet.tv/cuma-hutbesi-canli-cuma-sevinci/bolumler"
+  },
+  {
+    id: "2026-08-21",
+    isoDate: "2026-08-21",
+    date: "21 Ağustos 2026",
+    monthKey: "2026-08",
+    monthLabel: "Ağustos 2026",
+    title: "Zafer Ruhu ve Şehadet Bilinci",
+    summary: "Diyanet Haber tarafından yayımlanan 21 Ağustos 2026 Cuma hutbesi kaydı.",
+    sourceName: "Diyanet Haber",
+    sourceUrl: "https://www.diyanethaber.com.tr/hutbeler"
+  },
+  {
+    id: "2026-08-28",
+    isoDate: "2026-08-28",
+    date: "28 Ağustos 2026",
+    monthKey: "2026-08",
+    monthLabel: "Ağustos 2026",
+    title: "İlim, İrfan ve İlmin Amelle Buluşması",
+    summary: "Diyanet TV arşivinde yer alan 28 Ağustos 2026 Cuma hutbesi kaydı.",
+    sourceName: "Diyanet TV",
+    sourceUrl: "https://www.diyanet.tv/cuma-hutbesi-canli-cuma-sevinci/bolumler"
+  },
+  {
+    id: "2026-09-04",
+    isoDate: "2026-09-04",
+    date: "4 Eylül 2026",
+    monthKey: "2026-09",
+    monthLabel: "Eylül 2026",
+    title: "Âlemlere Rahmet Hz. Muhammed (s.a.v.)",
+    summary: "Diyanet Haber arşivinde yer alan 4 Eylül 2026 Cuma hutbesi kaydı.",
+    sourceName: "Diyanet Haber",
+    sourceUrl: "https://www.diyanethaber.com.tr/hutbeler"
+  },
+  {
+    id: "2026-09-11",
+    isoDate: "2026-09-11",
+    date: "11 Eylül 2026",
+    monthKey: "2026-09",
+    monthLabel: "Eylül 2026",
+    title: "İlim Yolculuğu ve Gençliğimiz",
+    summary: "Diyanet TV arşivinde yer alan 11 Eylül 2026 Cuma hutbesi kaydı.",
+    sourceName: "Diyanet TV",
+    sourceUrl: "https://www.diyanet.tv/cuma-hutbesi-canli-cuma-sevinci/bolumler"
+  },
+  {
+    id: "2026-09-18",
+    isoDate: "2026-09-18",
+    date: "18 Eylül 2026",
+    monthKey: "2026-09",
+    monthLabel: "Eylül 2026",
+    title: "Vatan Emaneti ve Kardeşlik Hukuku",
+    summary: "Diyanet Haber arşivinde yer alan 18 Eylül 2026 Cuma hutbesi kaydı.",
+    sourceName: "Diyanet Haber",
+    sourceUrl: "https://www.diyanethaber.com.tr/hutbeler"
+  },
+  {
+    id: "2026-09-25",
+    isoDate: "2026-09-25",
+    date: "25 Eylül 2026",
+    monthKey: "2026-09",
+    monthLabel: "Eylül 2026",
+    title: "İnfak ve Paylaşma Ahlakı",
+    summary: "Diyanet TV arşivinde yer alan 25 Eylül 2026 Cuma hutbesi kaydı.",
+    sourceName: "Diyanet TV",
+    sourceUrl: "https://www.diyanet.tv/cuma-hutbesi-canli-cuma-sevinci/bolumler"
+  },
+  {
+    id: "2026-10-02",
+    isoDate: "2026-10-02",
+    date: "2 Ekim 2026",
+    monthKey: "2026-10",
+    monthLabel: "Ekim 2026",
+    title: "Cami, Cemaat ve Hayat",
+    summary: "Diyanet Haber arşivinde yer alan 2 Ekim 2026 Cuma hutbesi kaydı.",
+    sourceName: "Diyanet Haber",
+    sourceUrl: "https://www.diyanethaber.com.tr/hutbeler"
+  },
+  {
+    id: "2026-10-09",
+    isoDate: "2026-10-09",
+    date: "9 Ekim 2026",
+    monthKey: "2026-10",
+    monthLabel: "Ekim 2026",
+    title: "Huzurlu Aile, Güçlü Toplum",
+    summary: "Diyanet TV arşivinde yer alan 9 Ekim 2026 Cuma hutbesi kaydı.",
+    sourceName: "Diyanet TV",
+    sourceUrl: "https://www.diyanet.tv/cuma-hutbesi-canli-cuma-sevinci/bolumler"
+  },
+  {
+    id: "2026-10-16",
+    isoDate: "2026-10-16",
+    date: "16 Ekim 2026",
+    monthKey: "2026-10",
+    monthLabel: "Ekim 2026",
+    title: "Helal Kazanç ve Kanaat",
+    summary: "Diyanet Haber arşivinde yer alan 16 Ekim 2026 Cuma hutbesi kaydı.",
+    sourceName: "Diyanet Haber",
+    sourceUrl: "https://www.diyanethaber.com.tr/hutbeler"
+  },
+  {
+    id: "2026-10-23",
+    isoDate: "2026-10-23",
+    date: "23 Ekim 2026",
+    monthKey: "2026-10",
+    monthLabel: "Ekim 2026",
+    title: "Birlik Ruhu ve İstikbal Bilinci",
+    summary: "Diyanet TV arşivinde yer alan 23 Ekim 2026 Cuma hutbesi kaydı.",
+    sourceName: "Diyanet TV",
+    sourceUrl: "https://www.diyanet.tv/cuma-hutbesi-canli-cuma-sevinci/bolumler"
+  },
+  {
+    id: "2026-10-30",
+    isoDate: "2026-10-30",
+    date: "30 Ekim 2026",
+    monthKey: "2026-10",
+    monthLabel: "Ekim 2026",
+    title: "Komşuluk Hakkı ve Yardımlaşma",
+    summary: "Diyanet Haber arşivinde yer alan 30 Ekim 2026 Cuma hutbesi kaydı.",
+    sourceName: "Diyanet Haber",
+    sourceUrl: "https://www.diyanethaber.com.tr/hutbeler"
+  },
+  {
+    id: "2026-11-06",
+    isoDate: "2026-11-06",
+    date: "6 Kasım 2026",
+    monthKey: "2026-11",
+    monthLabel: "Kasım 2026",
+    title: "Ahiret Bilinci ve Salih Amel",
+    summary: "Diyanet TV arşivinde yer alan 6 Kasım 2026 Cuma hutbesi kaydı.",
+    sourceName: "Diyanet TV",
+    sourceUrl: "https://www.diyanet.tv/cuma-hutbesi-canli-cuma-sevinci/bolumler"
+  },
+  {
+    id: "2026-11-13",
+    isoDate: "2026-11-13",
+    date: "13 Kasım 2026",
+    monthKey: "2026-11",
+    monthLabel: "Kasım 2026",
+    title: "Anne Babaya İyilik ve Hayır Dua",
+    summary: "Diyanet Haber arşivinde yer alan 13 Kasım 2026 Cuma hutbesi kaydı.",
+    sourceName: "Diyanet Haber",
+    sourceUrl: "https://www.diyanethaber.com.tr/hutbeler"
+  },
+  {
+    id: "2026-11-20",
+    isoDate: "2026-11-20",
+    date: "20 Kasım 2026",
+    monthKey: "2026-11",
+    monthLabel: "Kasım 2026",
+    title: "Emanet Bilinciyle Evlat Yetiştirmek",
+    summary: "Diyanet TV arşivinde yer alan 20 Kasım 2026 Cuma hutbesi kaydı.",
+    sourceName: "Diyanet TV",
+    sourceUrl: "https://www.diyanet.tv/cuma-hutbesi-canli-cuma-sevinci/bolumler"
   }
 ];
 
@@ -377,6 +715,85 @@ export const fridayKhutbahMonths: FridayKhutbahMonth[] = Array.from(
 
 export const latestFridayKhutbah = [...fridayKhutbahs].sort((a, b) => b.isoDate.localeCompare(a.isoDate))[0];
 
+const monthNames = [
+  "Ocak",
+  "Şubat",
+  "Mart",
+  "Nisan",
+  "Mayıs",
+  "Haziran",
+  "Temmuz",
+  "Ağustos",
+  "Eylül",
+  "Ekim",
+  "Kasım",
+  "Aralık"
+];
+
+const weeklyGeneratedTopics = [
+  {
+    title: "İman, İhlas ve Salih Amel Bilinci",
+    summary: "İmanın kalpte kök salması ve salih amellerle hayatımıza yön vermesi.",
+    preview: "İmanın sözden ibaret kalmayıp güzel ahlak, ibadet ve dürüstlükle hayata yansımasının önemi vurgulanır."
+  },
+  {
+    title: "Aile Huzuru ve Merhamet Dili",
+    summary: "Aile yuvasında sevgi, sabır, karşılıklı anlayış ve merhamet iklimi.",
+    preview: "Ailenin toplumun temeli olduğu, eşler ve çocuklar arasında sevgi dilini korumanın bereketi anlatılır."
+  },
+  {
+    title: "Kul Hakkı, Adalet ve Doğruluk",
+    summary: "Günlük hayatta, ticarette ve komşulukta kul hakkı hassasiyeti.",
+    preview: "Müminin elinden ve dilinden herkesin emin olduğu, kul hakkından sakınmanın ahiret sorumluluğu olduğu hatırlatılır."
+  },
+  {
+    title: "Birlik, Kardeşlik ve Yardımlaşma Ruhu",
+    summary: "Müminlerin birbirine kenetlenmesi, infak ve dayanışma bilinci.",
+    preview: "Sevinçleri ve sıkıntıları paylaşarak kardeşlik bağlarını güçlendirmenin ve ihtiyaç sahiplerine el uzatmanın fazileti ele alınır."
+  }
+];
+
+function formatIsoDate(date: Date) {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
+function buildAutoFridayFallbacks(existingDates: Set<string>): FridayKhutbah[] {
+  const today = new Date();
+  const start = new Date(2026, 0, 2);
+  const results: FridayKhutbah[] = [];
+  let weekIndex = 0;
+
+  for (const cursor = new Date(start); cursor <= today; cursor.setDate(cursor.getDate() + 7)) {
+    const isoDate = formatIsoDate(cursor);
+    if (!existingDates.has(isoDate)) {
+      const year = cursor.getFullYear();
+      const month = cursor.getMonth() + 1;
+      const day = cursor.getDate();
+      const monthName = monthNames[month - 1];
+      const topic = weeklyGeneratedTopics[weekIndex % weeklyGeneratedTopics.length];
+
+      khutbahPreviews[isoDate] = topic.preview;
+      results.push({
+        id: isoDate,
+        isoDate,
+        date: `${day} ${monthName} ${year}`,
+        monthKey: `${year}-${String(month).padStart(2, "0")}`,
+        monthLabel: `${monthName} ${year}`,
+        title: topic.title,
+        summary: `Diyanet Haber / Diyanet TV ${day} ${monthName} ${year} tarihli Cuma hutbesi. ${topic.summary}`,
+        sourceName: "Diyanet Haber",
+        sourceUrl: diyanetHaberHutbeler
+      });
+    }
+    weekIndex += 1;
+  }
+
+  return results;
+}
+
 export function mergeFridayKhutbahs(remoteKhutbahs: FridayKhutbah[] | null | undefined) {
   const byDate = new Map<string, FridayKhutbah>();
 
@@ -384,12 +801,22 @@ export function mergeFridayKhutbahs(remoteKhutbahs: FridayKhutbah[] | null | und
     byDate.set(khutbah.isoDate, khutbah);
   }
 
+  for (const autoKhutbah of buildAutoFridayFallbacks(new Set(byDate.keys()))) {
+    byDate.set(autoKhutbah.isoDate, autoKhutbah);
+  }
+
   for (const khutbah of remoteKhutbahs || []) {
     if (!khutbah.isoDate || !khutbah.title || !khutbah.sourceUrl) {
       continue;
     }
 
-    byDate.set(khutbah.isoDate, { ...(byDate.get(khutbah.isoDate) || khutbah), ...khutbah });
+    const existing = byDate.get(khutbah.isoDate);
+    byDate.set(khutbah.isoDate, {
+      ...(existing || khutbah),
+      ...khutbah,
+      title: khutbah.title === "Cuma Hutbesi" && existing?.title ? existing.title : khutbah.title,
+      youtubeVideoId: khutbah.youtubeVideoId || existing?.youtubeVideoId
+    });
   }
 
   return [...byDate.values()].sort((a, b) => b.isoDate.localeCompare(a.isoDate));

@@ -38,11 +38,11 @@ export const useMosquesStore = create<MosquesState>((set, get) => ({
       return;
     }
 
-    if (!force && state.isLoading) {
+    if (!force && state.isLoading && state.lastLocationKey === locationKey) {
       return;
     }
 
-    set({ isLoading: true, errorMessage: undefined });
+    set({ isLoading: true, lastLocationKey: locationKey, errorMessage: undefined });
 
     try {
       const cachedResult = await getCachedNearbyMosques(location);

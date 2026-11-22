@@ -1,4 +1,5 @@
-const API_URL = process.env.EXPO_PUBLIC_REWARDS_API_URL?.trim().replace(/\/$/, "");
+const DEFAULT_API_URL = "https://huzur-six.vercel.app";
+const API_URL = process.env.EXPO_PUBLIC_REWARDS_API_URL;
 const REQUEST_TIMEOUT_MS = 7000;
 
 export type RemoteDuaRequest = {
@@ -9,20 +10,21 @@ export type RemoteDuaRequest = {
   createdAt: string;
 };
 
+function getApiUrl() {
+  const envUrl = API_URL?.trim();
+  return (envUrl && envUrl.startsWith("http") ? envUrl : DEFAULT_API_URL).replace(/\/$/, "");
+}
+
 function isConfigured() {
-  return Boolean(API_URL);
+  return true;
 }
 
 async function requestJson<T>(path: string, init?: RequestInit): Promise<T | null> {
-  if (!isConfigured()) {
-    return null;
-  }
-
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
 
   try {
-    const response = await fetch(`${API_URL}${path}`, {
+    const response = await fetch(`${getApiUrl()}${path}`, {
       ...init,
       headers: {
         "Content-Type": "application/json",

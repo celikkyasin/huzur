@@ -1,5 +1,6 @@
 import type { FridayMessage } from "@/types";
 
+const DEFAULT_API_URL = "https://huzur-six.vercel.app";
 const API_URL = process.env.EXPO_PUBLIC_REWARDS_API_URL;
 const REQUEST_TIMEOUT_MS = 7000;
 
@@ -14,11 +15,12 @@ type RemoteFridayMessage = {
 };
 
 function getApiUrl() {
-  return API_URL?.trim().replace(/\/$/, "");
+  const envUrl = API_URL?.trim();
+  return (envUrl && envUrl.startsWith("http") ? envUrl : DEFAULT_API_URL).replace(/\/$/, "");
 }
 
 function hasApiUrl() {
-  return typeof API_URL === "string" && API_URL.trim().length > 0;
+  return true;
 }
 
 function normalizeAspectRatio(value: unknown) {
