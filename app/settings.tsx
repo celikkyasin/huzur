@@ -4,7 +4,6 @@ import { Ionicons } from "@expo/vector-icons";
 import { useAudioPlayer, useAudioPlayerStatus } from "expo-audio";
 import { LinearGradient } from "expo-linear-gradient";
 import { AppHeader } from "@/components/AppHeader";
-import { SettingsRow } from "@/components/SettingsRow";
 import { Card } from "@/components/ui/Card";
 import { ScreenContainer } from "@/components/ui/ScreenContainer";
 import {
@@ -24,9 +23,8 @@ import { useLocationStore } from "@/store/locationStore";
 import { usePrayerTimesStore } from "@/store/prayerTimesStore";
 import { useRewardStore } from "@/store/rewardStore";
 import { colors, radii, shadows, typography } from "@/theme";
-import type { SettingsItem } from "@/types";
 
-const APP_VERSION = "1.0.90";
+const APP_VERSION = "1.0.91";
 const SUPPORT_EMAIL = "celikkyasin@gmail.com";
 
 type FeedbackModalState = {
@@ -43,19 +41,20 @@ const SOUND_SHORT_LABELS: Record<PrayerNotificationSoundMode, string> = {
   adhan: "Ezan"
 };
 
-const supportItems: SettingsItem[] = [
-  { id: "about", title: "Uygulama Hakkında", subtitle: `Sürüm ${APP_VERSION} • Lisans ve özellik bilgileri`, icon: "information-circle" },
-  { id: "contact", title: "İletişim ve Geri Bildirim", subtitle: SUPPORT_EMAIL, icon: "mail" }
-];
-
 export default function SettingsScreen() {
   const [notificationsEnabled, setNotificationsEnabled] = useState(false);
   const [remindersExpanded, setRemindersExpanded] = useState(false);
-  const [isUpdatingNotifications, setIsUpdatingNotifications] = useState(false);
   const [notificationPreferences, setNotificationPreferences] = useState<PrayerNotificationPreferences>({
     reminderMinutes: 15,
     soundMode: "default",
-    notifyOnTime: true
+    notifyOnTime: true,
+    perPrayer: {
+      imsak: { enabled: true, reminderMinutes: 15, soundMode: "default" },
+      ogle: { enabled: true, reminderMinutes: 15, soundMode: "default" },
+      ikindi: { enabled: true, reminderMinutes: 15, soundMode: "default" },
+      aksam: { enabled: true, reminderMinutes: 15, soundMode: "default" },
+      yatsi: { enabled: true, reminderMinutes: 15, soundMode: "default" }
+    }
   });
   const [expandedPrayerId, setExpandedPrayerId] = useState<PrayerNotifiableId | null>(null);
   const [feedbackModal, setFeedbackModal] = useState<FeedbackModalState>({
@@ -90,99 +89,85 @@ export default function SettingsScreen() {
   };
 
   const toggleNotifications = async (nextValue = !notificationsEnabled) => {
-    if (isUpdatingNotifications) {
-      return;
-    }
+    // Anında Switch'i güncelle (sıfır gecikme)
+    setNotificationsEnabled(nextValue);
 
-    setIsUpdatingNotifications(true);
     try {
       const result = await setPrayerNotificationsEnabled(nextValue, prayerTimes, notificationPreferences);
-      setNotificationsEnabled(result.enabled);
-
       if (!result.permissionGranted) {
+        setNotificationsEnabled(false);
         showFeedback({
           tone: "warning",
           icon: "notifications-off",
           title: "Bildirim İzni Gerekli",
           message: "Namaz vakti hatırlatmalarını alabilmek için telefon ayarlarından Huzur bildirimlerine izin vermeniz gerekiyor."
         });
-      } else {
-        const soundLabel = soundModeOptions.find((o) => o.mode === notificationPreferences.soundMode)?.label ?? "Kısa Uyarı Sesi";
-        showFeedback({
-          tone: result.enabled ? "success" : "info",
-          icon: result.enabled ? "checkmark-circle" : "moon",
-          title: result.enabled ? "Hatırlatıcılar Aktif" : "Hatırlatıcılar Kapatıldı",
-          message: result.enabled
-            ? `5 vakit namaz hatırlatıcıları kuruldu.\nVarsayılan uyarı: ${notificationPreferences.reminderMinutes === 0 ? "Tam vaktinde" : `${notificationPreferences.reminderMinutes} dk önce`} • ${soundLabel}`
-            : "Tüm namaz vakti bildirimleri ve hatırlatıcıları devre dışı bırakıldı."
-        });
       }
     } catch {
-      showFeedback({
-        tone: "warning",
-        icon: "alert-circle",
-        title: "Ayarlar Kaydedilemedi",
-        message: "Bildirim tercihi şu anda güncellenemedi. Lütfen tekrar deneyin."
-      });
-    } finally {
-      setIsUpdatingNotifications(false);
+      setNotificationsEnabled(!nextValue);
     }
   };
 
-  const applyGlobalPreferences = async (patch: Partial<PrayerNotificationPreferences>, applyToAllPrayers = false) => {
-    const nextGlobalMinutes = patch.reminderMinutes ?? notificationPreferences.reminderMinutes;
-    const nextGlobalSound = patch.soundMode ?? notificationPreferences.soundMode;
+  const applyGlobalPreferences = (patch: Partial<PrayerNotificationPreferences>, applyToAllPrayers = false) => {
+    setNotificationPreferences((prev) => {
+      const nextGlobalMinutes = patch.reminderMinutes ?? prev.reminderMinutes;
+      const nextGlobalSound = patch.soundMode ?? prev.soundMode;
 
-    const nextPerPrayer = { ...(notificationPreferences.perPrayer || {}) };
-    if (applyToAllPrayers) {
-      for (const p of NOTIFIABLE_PRAYERS) {
-        const currentP = nextPerPrayer[p.id];
-        nextPerPrayer[p.id] = {
-          enabled: currentP?.enabled ?? true,
-          reminderMinutes: patch.reminderMinutes !== undefined ? nextGlobalMinutes : (currentP?.reminderMinutes ?? nextGlobalMinutes),
-          soundMode: patch.soundMode !== undefined ? nextGlobalSound : (currentP?.soundMode ?? nextGlobalSound)
-        };
+      const nextPerPrayer: Partial<Record<PrayerNotifiableId, PerPrayerNotificationConfig>> = {
+        ...(prev.perPrayer || {}),
+        ...(patch.perPrayer || {})
+      };
+
+      if (applyToAllPrayers) {
+        for (const p of NOTIFIABLE_PRAYERS) {
+          const currentP = nextPerPrayer[p.id];
+          nextPerPrayer[p.id] = {
+            enabled: currentP?.enabled ?? true,
+            reminderMinutes: patch.reminderMinutes !== undefined ? nextGlobalMinutes : (currentP?.reminderMinutes ?? nextGlobalMinutes),
+            soundMode: patch.soundMode !== undefined ? nextGlobalSound : (currentP?.soundMode ?? nextGlobalSound)
+          };
+        }
       }
-    }
 
-    const optimisticPreferences: PrayerNotificationPreferences = {
-      ...notificationPreferences,
-      ...patch,
-      perPrayer: nextPerPrayer
-    };
+      const nextPrefs: PrayerNotificationPreferences = {
+        ...prev,
+        ...patch,
+        reminderMinutes: nextGlobalMinutes,
+        soundMode: nextGlobalSound,
+        perPrayer: nextPerPrayer
+      };
 
-    // Anında ekranı güncelle (optimistic update)
-    setNotificationPreferences(optimisticPreferences);
-
-    try {
-      const saved = await setPrayerNotificationPreferences(optimisticPreferences, prayerTimes);
-      setNotificationPreferences(saved);
-    } catch {
-      showFeedback({
-        tone: "warning",
-        icon: "alert-circle",
-        title: "Tercih Kaydedilemedi",
-        message: "Hatırlatıcı ayarı kaydedilirken bir sorun oluştu."
-      });
-    }
+      // Arka planda kaydet, state'i ezme!
+      void setPrayerNotificationPreferences(nextPrefs, prayerTimes);
+      return nextPrefs;
+    });
   };
 
-  const updateSinglePrayerConfig = async (prayerId: PrayerNotifiableId, patch: Partial<PerPrayerNotificationConfig>) => {
-    const currentConfig: PerPrayerNotificationConfig = notificationPreferences.perPrayer?.[prayerId] ?? {
-      enabled: true,
-      reminderMinutes: notificationPreferences.reminderMinutes,
-      soundMode: notificationPreferences.soundMode
-    };
+  const updateSinglePrayerConfig = (prayerId: PrayerNotifiableId, patch: Partial<PerPrayerNotificationConfig>) => {
+    setNotificationPreferences((prev) => {
+      const currentConfig: PerPrayerNotificationConfig = prev.perPrayer?.[prayerId] ?? {
+        enabled: true,
+        reminderMinutes: prev.reminderMinutes,
+        soundMode: prev.soundMode
+      };
 
-    const nextPerPrayer = {
-      ...(notificationPreferences.perPrayer || {}),
-      [prayerId]: {
-        ...currentConfig,
-        ...patch
-      }
-    };
+      const nextPerPrayer: Partial<Record<PrayerNotifiableId, PerPrayerNotificationConfig>> = {
+        ...(prev.perPrayer || {}),
+        [prayerId]: {
+          ...currentConfig,
+          ...patch
+        }
+      };
 
-    await applyGlobalPreferences({ perPrayer: nextPerPrayer }, false);
+      const nextPrefs: PrayerNotificationPreferences = {
+        ...prev,
+        perPrayer: nextPerPrayer
+      };
+
+      // Arka planda kaydet, state'i ezme!
+      void setPrayerNotificationPreferences(nextPrefs, prayerTimes);
+      return nextPrefs;
+    });
   };
 
   const openContact = async () => {
@@ -198,16 +183,6 @@ export default function SettingsScreen() {
       title: "İletişim & Destek",
       message: `Öneri ve talepleriniz için bize ${SUPPORT_EMAIL} e-posta adresinden ulaşabilirsiniz.`
     });
-  };
-
-  const handleSupportPress = (id: string) => {
-    if (id === "about") {
-      setAboutVisible(true);
-      return;
-    }
-    if (id === "contact") {
-      void openContact();
-    }
   };
 
   const activePrayersCount = NOTIFIABLE_PRAYERS.filter((p) => (notificationPreferences.perPrayer?.[p.id]?.enabled ?? true)).length;
@@ -247,7 +222,7 @@ export default function SettingsScreen() {
           <Pressable
             accessibilityRole="button"
             onPress={() => void refreshLocation()}
-            style={[styles.locationRefreshBtn]}
+            style={styles.locationRefreshBtn}
           >
             <Ionicons name="refresh" size={16} color={colors.white} />
             <Text style={styles.locationRefreshText}>Yenile</Text>
@@ -290,7 +265,6 @@ export default function SettingsScreen() {
 
           <Switch
             value={notificationsEnabled}
-            disabled={isUpdatingNotifications}
             onValueChange={(value) => void toggleNotifications(value)}
             trackColor={{ false: colors.line, true: colors.emerald }}
             thumbColor={colors.white}
@@ -326,7 +300,7 @@ export default function SettingsScreen() {
                     <Pressable
                       key={minutes}
                       accessibilityRole="button"
-                      onPress={() => void applyGlobalPreferences({ reminderMinutes: minutes }, true)}
+                      onPress={() => applyGlobalPreferences({ reminderMinutes: minutes }, true)}
                       style={[
                         styles.presetChip,
                         isSelected ? styles.presetChipActive : styles.presetChipInactive
@@ -348,7 +322,7 @@ export default function SettingsScreen() {
                 </View>
                 <Switch
                   value={notificationPreferences.notifyOnTime !== false}
-                  onValueChange={(val) => void applyGlobalPreferences({ notifyOnTime: val }, false)}
+                  onValueChange={(val) => applyGlobalPreferences({ notifyOnTime: val }, false)}
                   trackColor={{ false: colors.line, true: colors.emerald }}
                   thumbColor={colors.white}
                 />
@@ -380,7 +354,7 @@ export default function SettingsScreen() {
                     <Pressable
                       key={option.mode}
                       accessibilityRole="button"
-                      onPress={() => void applyGlobalPreferences({ soundMode: option.mode }, true)}
+                      onPress={() => applyGlobalPreferences({ soundMode: option.mode }, true)}
                       style={[
                         styles.soundCardItem,
                         selected ? styles.soundCardItemActive : styles.soundCardItemInactive
@@ -463,7 +437,7 @@ export default function SettingsScreen() {
 
                         <Switch
                           value={config.enabled}
-                          onValueChange={(val) => void updateSinglePrayerConfig(prayerMeta.id, { enabled: val })}
+                          onValueChange={(val) => updateSinglePrayerConfig(prayerMeta.id, { enabled: val })}
                           trackColor={{ false: colors.line, true: colors.emerald }}
                           thumbColor={colors.white}
                         />
@@ -480,7 +454,7 @@ export default function SettingsScreen() {
                                   key={min}
                                   accessibilityRole="button"
                                   hitSlop={6}
-                                  onPress={() => void updateSinglePrayerConfig(prayerMeta.id, { reminderMinutes: min })}
+                                  onPress={() => updateSinglePrayerConfig(prayerMeta.id, { reminderMinutes: min })}
                                   style={[styles.miniChip, active ? styles.miniChipActive : styles.miniChipInactive]}
                                 >
                                   <Text style={[styles.miniChipText, active ? styles.miniChipTextActive : styles.miniChipTextInactive]}>
@@ -500,7 +474,7 @@ export default function SettingsScreen() {
                                   key={sMode}
                                   accessibilityRole="button"
                                   hitSlop={6}
-                                  onPress={() => void updateSinglePrayerConfig(prayerMeta.id, { soundMode: sMode })}
+                                  onPress={() => updateSinglePrayerConfig(prayerMeta.id, { soundMode: sMode })}
                                   style={[styles.miniSoundChip, active ? styles.miniChipActive : styles.miniChipInactive]}
                                 >
                                   <Text style={[styles.miniChipText, active ? styles.miniChipTextActive : styles.miniChipTextInactive]}>
@@ -521,7 +495,7 @@ export default function SettingsScreen() {
         ) : null}
       </Card>
 
-      {/* UYGULAMA VE DESTEK BÖLÜMÜ */}
+      {/* UYGULAMA VE DESTEK BÖLÜMÜ (Modern 2'li Bento Grid + Sürüm Rozeti) */}
       <View style={styles.sectionHeader}>
         <View>
           <Text style={styles.sectionKicker}>KURUMSAL & YARDIM</Text>
@@ -529,16 +503,49 @@ export default function SettingsScreen() {
         </View>
       </View>
 
-      <Card style={styles.supportCard}>
-        {supportItems.map((item, index) => (
-          <SettingsRow
-            key={item.id}
-            item={item}
-            isLast={index === supportItems.length - 1}
-            onPress={() => handleSupportPress(item.id)}
-          />
-        ))}
-      </Card>
+      <View style={styles.supportBentoGrid}>
+        <Pressable
+          accessibilityRole="button"
+          onPress={() => setAboutVisible(true)}
+          style={styles.supportBentoCard}
+        >
+          <View style={styles.supportBentoTop}>
+            <View style={styles.supportBentoIconBox}>
+              <Ionicons name="shield-checkmark" size={22} color={colors.emerald} />
+            </View>
+            <View style={styles.supportVersionChip}>
+              <Text style={styles.supportVersionChipText}>v{APP_VERSION}</Text>
+            </View>
+          </View>
+          <Text style={styles.supportBentoTitle}>Uygulama Hakkında</Text>
+          <Text style={styles.supportBentoSubtitle}>Sürüm, Diyanet kaynak uyumu ve özellik bilgileri</Text>
+          <View style={styles.supportBentoActionRow}>
+            <Text style={styles.supportBentoActionText}>İncele</Text>
+            <Ionicons name="arrow-forward" size={14} color={colors.emerald} />
+          </View>
+        </Pressable>
+
+        <Pressable
+          accessibilityRole="button"
+          onPress={() => void openContact()}
+          style={styles.supportBentoCard}
+        >
+          <View style={styles.supportBentoTop}>
+            <View style={[styles.supportBentoIconBox, styles.supportBentoIconGold]}>
+              <Ionicons name="chatbubbles" size={22} color="#B7791F" />
+            </View>
+            <View style={styles.supportDirectChip}>
+              <Text style={styles.supportDirectChipText}>7/24</Text>
+            </View>
+          </View>
+          <Text style={styles.supportBentoTitle}>Bize Ulaşın</Text>
+          <Text style={styles.supportBentoSubtitle}>Öneri, hata bildirimi ve destek talepleri</Text>
+          <View style={styles.supportBentoActionRow}>
+            <Text style={styles.supportBentoActionText}>E-posta Gönder</Text>
+            <Ionicons name="mail-outline" size={14} color={colors.emerald} />
+          </View>
+        </Pressable>
+      </View>
 
       <FeedbackModal modal={feedbackModal} onClose={closeFeedback} />
       <AboutModal visible={aboutVisible} onClose={() => setAboutVisible(false)} version={APP_VERSION} />
@@ -1196,9 +1203,85 @@ const styles = StyleSheet.create({
   miniChipTextActive: {
     color: colors.white
   },
-  supportCard: {
-    paddingVertical: 2,
-    paddingHorizontal: 0
+  supportBentoGrid: {
+    flexDirection: "row",
+    gap: 12
+  },
+  supportBentoCard: {
+    flex: 1,
+    borderRadius: radii.lg,
+    backgroundColor: colors.paper,
+    borderWidth: 1,
+    borderColor: colors.line,
+    padding: 15,
+    justifyContent: "space-between",
+    ...shadows.card
+  },
+  supportBentoTop: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    marginBottom: 12
+  },
+  supportBentoIconBox: {
+    width: 42,
+    height: 42,
+    borderRadius: 14,
+    backgroundColor: colors.emeraldSoft,
+    alignItems: "center",
+    justifyContent: "center"
+  },
+  supportBentoIconGold: {
+    backgroundColor: colors.goldSoft
+  },
+  supportVersionChip: {
+    borderRadius: radii.round,
+    backgroundColor: colors.emeraldSoft,
+    paddingHorizontal: 8,
+    paddingVertical: 4
+  },
+  supportVersionChipText: {
+    color: colors.emerald,
+    fontSize: 11,
+    fontWeight: "900"
+  },
+  supportDirectChip: {
+    borderRadius: radii.round,
+    backgroundColor: colors.goldSoft,
+    paddingHorizontal: 8,
+    paddingVertical: 4
+  },
+  supportDirectChipText: {
+    color: "#B7791F",
+    fontSize: 11,
+    fontWeight: "900"
+  },
+  supportBentoTitle: {
+    color: colors.ink,
+    fontSize: 15,
+    lineHeight: 20,
+    fontWeight: "900"
+  },
+  supportBentoSubtitle: {
+    color: colors.muted,
+    fontSize: 11,
+    lineHeight: 16,
+    marginTop: 4,
+    fontWeight: "700"
+  },
+  supportBentoActionRow: {
+    marginTop: 14,
+    paddingTop: 10,
+    borderTopWidth: 1,
+    borderTopColor: "rgba(7,94,71,0.08)",
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between"
+  },
+  supportBentoActionText: {
+    color: colors.emerald,
+    fontSize: 12,
+    fontWeight: "900"
   },
   modalBackdrop: {
     flex: 1,
