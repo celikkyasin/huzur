@@ -24,7 +24,7 @@ import { usePrayerTimesStore } from "@/store/prayerTimesStore";
 import { useRewardStore } from "@/store/rewardStore";
 import { colors, radii, shadows, typography } from "@/theme";
 
-const APP_VERSION = "1.0.93";
+const APP_VERSION = "1.0.94";
 const SUPPORT_EMAIL = "celikkyasin@gmail.com";
 
 type FeedbackModalState = {
