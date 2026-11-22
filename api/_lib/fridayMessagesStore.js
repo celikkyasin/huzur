@@ -164,10 +164,11 @@ function makeUniqueId(id, usedIds, index) {
 }
 
 function normalizeMessage(item, index) {
-  const message = normalizeText(item?.message, 260);
+  const fallback = item?.category?.includes("Bayram") ? "Hayırlı Bayramlar" : item?.category?.includes("Kandil") ? "Hayırlı Kandiller" : "Hayırlı Cumalar";
+  const message = normalizeText(item?.message, 260) || fallback;
   const imageUrl = normalizeUrl(item?.imageUrl);
 
-  if (!message || !imageUrl) {
+  if (!imageUrl) {
     return null;
   }
 
