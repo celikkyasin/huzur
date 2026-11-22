@@ -53,6 +53,10 @@
       "destination": "/api/friday-sermons?route=sync"
     },
     {
+      "source": "/friday-sermons/save",
+      "destination": "/api/friday-sermons?route=save"
+    },
+    {
       "source": "/quran/chapters",
       "destination": "/api/quran?route=chapters"
     },

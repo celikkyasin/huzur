@@ -1,4 +1,24 @@
-const { getFridaySermonsConfig, handleCors, json, syncLatestDiyanetSermons } = require("./_lib/fridaySermonsStore");
+const { getFridaySermonsConfig, handleCors, json, setFridaySermonsConfig, syncLatestDiyanetSermons } = require("./_lib/fridaySermonsStore");
+
+function readBody(request) {
+  return new Promise((resolve, reject) => {
+    let body = "";
+    request.on("data", (chunk) => {
+      body += chunk;
+      if (body.length > 50000) {
+        reject(new Error("Request body is too large."));
+      }
+    });
+    request.on("end", () => {
+      try {
+        resolve(body ? JSON.parse(body) : {});
+      } catch {
+        reject(new Error("Request body must be valid JSON."));
+      }
+    });
+    request.on("error", reject);
+  });
+}
 
 function getRoute(request) {
   const route = String(request.query?.route || "").replace(/^\/+|\/+$/g, "");
@@ -62,6 +82,47 @@ module.exports = async function handler(request, response) {
 
       const result = await syncLatestDiyanetSermons();
       json(response, 200, result);
+      return;
+    }
+
+    if (route === "save") {
+      if (request.method !== "POST") {
+        json(response, 405, { ok: false, error: "Method not allowed." });
+        return;
+      }
+
+      const adminToken = process.env.REWARDS_ADMIN_TOKEN?.trim();
+      const providedToken = request.headers["x-admin-token"] || request.query?.token;
+      if (!adminToken || !providedToken || String(providedToken) !== adminToken) {
+        json(response, 401, { ok: false, error: "Admin token şifresi geçersiz veya eksik." });
+        return;
+      }
+
+      const body = await readBody(request);
+      if (!body.title) {
+        json(response, 400, { ok: false, error: "Hutbe başlığı gereklidir." });
+        return;
+      }
+
+      let youtubeVideoId = body.youtubeVideoId || "";
+      if (youtubeVideoId.includes("youtube.com") || youtubeVideoId.includes("youtu.be")) {
+        const match = /(?:watch\?v=|embed\/|youtu\.be\/)([a-zA-Z0-9_-]{6,})/i.exec(youtubeVideoId);
+        if (match) {
+          youtubeVideoId = match[1];
+        }
+      }
+
+      const sermonItem = {
+        title: String(body.title).trim(),
+        date: body.date || new Date().toLocaleDateString("tr-TR", { day: "numeric", month: "long", year: "numeric" }),
+        isoDate: body.isoDate || new Date().toISOString().slice(0, 10),
+        youtubeVideoId: youtubeVideoId.trim(),
+        sourceUrl: body.sourceUrl || (youtubeVideoId ? `https://www.youtube.com/watch?v=${youtubeVideoId}` : "https://www.diyanethaber.com.tr/hutbeler"),
+        summary: body.summary || ""
+      };
+
+      const result = await setFridaySermonsConfig([sermonItem]);
+      json(response, 200, { ok: true, message: "Hutbe başarıyla kaydedildi.", sermon: sermonItem, result });
       return;
     }
 
