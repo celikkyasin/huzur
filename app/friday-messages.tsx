@@ -92,9 +92,7 @@ export default function FridayMessagesScreen() {
       return fridayMessages;
     }
 
-    const localIds = new Set(fridayMessages.map((message) => message.id));
-    const remoteAdditions = remoteMessages.filter((message) => !localIds.has(message.id));
-    return [...remoteAdditions, ...fridayMessages];
+    return remoteMessages;
   }, [remoteMessages]);
   const visibleMessages = useMemo(() => messages.filter((message) => getMessageCategory(message) === selectedCategory), [messages, selectedCategory]);
   const previewItems = useMemo<PreviewItem[]>(() => {
