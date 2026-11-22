@@ -1,9 +1,10 @@
 import { useEffect, useState } from "react";
 import { Linking, Modal, Pressable, StyleSheet, Switch, Text, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
-import { useAudioPlayer } from "expo-audio";
+import { useAudioPlayer, useAudioPlayerStatus } from "expo-audio";
 import { LinearGradient } from "expo-linear-gradient";
 import { AppHeader } from "@/components/AppHeader";
+import { SettingsRow } from "@/components/SettingsRow";
 import { Card } from "@/components/ui/Card";
 import { ScreenContainer } from "@/components/ui/ScreenContainer";
 import {
@@ -23,8 +24,9 @@ import { useLocationStore } from "@/store/locationStore";
 import { usePrayerTimesStore } from "@/store/prayerTimesStore";
 import { useRewardStore } from "@/store/rewardStore";
 import { colors, radii, shadows, typography } from "@/theme";
+import type { SettingsItem } from "@/types";
 
-const APP_VERSION = "1.0.89";
+const APP_VERSION = "1.0.90";
 const SUPPORT_EMAIL = "celikkyasin@gmail.com";
 
 type FeedbackModalState = {
@@ -41,8 +43,14 @@ const SOUND_SHORT_LABELS: Record<PrayerNotificationSoundMode, string> = {
   adhan: "Ezan"
 };
 
+const supportItems: SettingsItem[] = [
+  { id: "about", title: "Uygulama Hakkında", subtitle: `Sürüm ${APP_VERSION} • Lisans ve özellik bilgileri`, icon: "information-circle" },
+  { id: "contact", title: "İletişim ve Geri Bildirim", subtitle: SUPPORT_EMAIL, icon: "mail" }
+];
+
 export default function SettingsScreen() {
   const [notificationsEnabled, setNotificationsEnabled] = useState(false);
+  const [remindersExpanded, setRemindersExpanded] = useState(false);
   const [isUpdatingNotifications, setIsUpdatingNotifications] = useState(false);
   const [notificationPreferences, setNotificationPreferences] = useState<PrayerNotificationPreferences>({
     reminderMinutes: 15,
@@ -122,35 +130,33 @@ export default function SettingsScreen() {
   };
 
   const applyGlobalPreferences = async (patch: Partial<PrayerNotificationPreferences>, applyToAllPrayers = false) => {
-    if (isUpdatingNotifications) {
-      return;
+    const nextGlobalMinutes = patch.reminderMinutes ?? notificationPreferences.reminderMinutes;
+    const nextGlobalSound = patch.soundMode ?? notificationPreferences.soundMode;
+
+    const nextPerPrayer = { ...(notificationPreferences.perPrayer || {}) };
+    if (applyToAllPrayers) {
+      for (const p of NOTIFIABLE_PRAYERS) {
+        const currentP = nextPerPrayer[p.id];
+        nextPerPrayer[p.id] = {
+          enabled: currentP?.enabled ?? true,
+          reminderMinutes: patch.reminderMinutes !== undefined ? nextGlobalMinutes : (currentP?.reminderMinutes ?? nextGlobalMinutes),
+          soundMode: patch.soundMode !== undefined ? nextGlobalSound : (currentP?.soundMode ?? nextGlobalSound)
+        };
+      }
     }
 
-    setIsUpdatingNotifications(true);
+    const optimisticPreferences: PrayerNotificationPreferences = {
+      ...notificationPreferences,
+      ...patch,
+      perPrayer: nextPerPrayer
+    };
+
+    // Anında ekranı güncelle (optimistic update)
+    setNotificationPreferences(optimisticPreferences);
+
     try {
-      const nextGlobalMinutes = patch.reminderMinutes ?? notificationPreferences.reminderMinutes;
-      const nextGlobalSound = patch.soundMode ?? notificationPreferences.soundMode;
-
-      let nextPerPrayer = { ...(notificationPreferences.perPrayer || {}) };
-      if (applyToAllPrayers) {
-        for (const p of NOTIFIABLE_PRAYERS) {
-          const currentP = nextPerPrayer[p.id];
-          nextPerPrayer[p.id] = {
-            enabled: currentP?.enabled ?? true,
-            reminderMinutes: patch.reminderMinutes !== undefined ? nextGlobalMinutes : (currentP?.reminderMinutes ?? nextGlobalMinutes),
-            soundMode: patch.soundMode !== undefined ? nextGlobalSound : (currentP?.soundMode ?? nextGlobalSound)
-          };
-        }
-      }
-
-      const nextPreferences = await setPrayerNotificationPreferences(
-        {
-          ...patch,
-          perPrayer: nextPerPrayer
-        },
-        prayerTimes
-      );
-      setNotificationPreferences(nextPreferences);
+      const saved = await setPrayerNotificationPreferences(optimisticPreferences, prayerTimes);
+      setNotificationPreferences(saved);
     } catch {
       showFeedback({
         tone: "warning",
@@ -158,16 +164,10 @@ export default function SettingsScreen() {
         title: "Tercih Kaydedilemedi",
         message: "Hatırlatıcı ayarı kaydedilirken bir sorun oluştu."
       });
-    } finally {
-      setIsUpdatingNotifications(false);
     }
   };
 
   const updateSinglePrayerConfig = async (prayerId: PrayerNotifiableId, patch: Partial<PerPrayerNotificationConfig>) => {
-    if (isUpdatingNotifications) {
-      return;
-    }
-
     const currentConfig: PerPrayerNotificationConfig = notificationPreferences.perPrayer?.[prayerId] ?? {
       enabled: true,
       reminderMinutes: notificationPreferences.reminderMinutes,
@@ -198,6 +198,16 @@ export default function SettingsScreen() {
       title: "İletişim & Destek",
       message: `Öneri ve talepleriniz için bize ${SUPPORT_EMAIL} e-posta adresinden ulaşabilirsiniz.`
     });
+  };
+
+  const handleSupportPress = (id: string) => {
+    if (id === "about") {
+      setAboutVisible(true);
+      return;
+    }
+    if (id === "contact") {
+      void openContact();
+    }
   };
 
   const activePrayersCount = NOTIFIABLE_PRAYERS.filter((p) => (notificationPreferences.perPrayer?.[p.id]?.enabled ?? true)).length;
@@ -237,7 +247,7 @@ export default function SettingsScreen() {
           <Pressable
             accessibilityRole="button"
             onPress={() => void refreshLocation()}
-            style={({ pressed }) => [styles.locationRefreshBtn, pressed && styles.pressed]}
+            style={[styles.locationRefreshBtn]}
           >
             <Ionicons name="refresh" size={16} color={colors.white} />
             <Text style={styles.locationRefreshText}>Yenile</Text>
@@ -245,7 +255,7 @@ export default function SettingsScreen() {
         </View>
       </LinearGradient>
 
-      {/* NAMAZ VAKTİ HATIRLATICI MERKEZİ */}
+      {/* NAMAZ VAKTİ HATIRLATICI MERKEZİ (Varsayılan Olarak Kapalı / Katlanır) */}
       <View style={styles.sectionHeader}>
         <View>
           <Text style={styles.sectionKicker}>BİLDİRİM VE EZAN AYARLARI</Text>
@@ -254,19 +264,30 @@ export default function SettingsScreen() {
       </View>
 
       <Card style={styles.reminderCenterCard}>
-        {/* Master Switch Row */}
+        {/* Master Header Row: Tıklayınca detaylar açılır/kapanır, sağda Switch */}
         <View style={styles.masterSwitchRow}>
-          <View style={[styles.masterIconBox, notificationsEnabled && styles.masterIconBoxActive]}>
-            <Ionicons name={notificationsEnabled ? "notifications" : "notifications-off"} size={24} color={notificationsEnabled ? colors.white : colors.emerald} />
-          </View>
-          <View style={styles.masterCopy}>
-            <Text style={styles.masterTitle}>Vakit Bildirimleri</Text>
-            <Text style={styles.masterSubtitle}>
-              {notificationsEnabled
-                ? `${activePrayersCount} vakit için otomatik hatırlatıcı aktif`
-                : "Bildirimler kapalı • Açmak için anahtara dokunun"}
-            </Text>
-          </View>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityState={{ expanded: remindersExpanded }}
+            onPress={() => setRemindersExpanded((curr) => !curr)}
+            style={styles.masterHeaderPressable}
+          >
+            <View style={[styles.masterIconBox, notificationsEnabled && styles.masterIconBoxActive]}>
+              <Ionicons name={notificationsEnabled ? "notifications" : "notifications-off"} size={23} color={notificationsEnabled ? colors.white : colors.emerald} />
+            </View>
+            <View style={styles.masterCopy}>
+              <Text style={styles.masterTitle}>Vakit Bildirimleri</Text>
+              <Text style={styles.masterSubtitle}>
+                {notificationsEnabled
+                  ? `${activePrayersCount} vakit aktif • ${notificationPreferences.reminderMinutes === 0 ? "Vaktinde" : `${notificationPreferences.reminderMinutes} dk önce`}`
+                  : "Kapalı • Ayrıntılar için dokunun"}
+              </Text>
+            </View>
+            <View style={styles.masterChevronBadge}>
+              <Ionicons name={remindersExpanded ? "chevron-up" : "chevron-down"} size={20} color={colors.emerald} />
+            </View>
+          </Pressable>
+
           <Switch
             value={notificationsEnabled}
             disabled={isUpdatingNotifications}
@@ -277,223 +298,227 @@ export default function SettingsScreen() {
           />
         </View>
 
-        <View style={styles.cardSeparator} />
+        {remindersExpanded ? (
+          <View style={styles.expandedRemindersBody}>
+            <View style={styles.cardSeparator} />
 
-        {/* 1. Ön Hatırlatma Süresi Seçici (Hızlı Chip'ler + Özel Ayar) */}
-        <View style={styles.blockSection}>
-          <View style={styles.blockHeaderRow}>
-            <View style={styles.blockTitleWrap}>
-              <Ionicons name="time-outline" size={18} color={colors.emerald} />
-              <Text style={styles.blockTitle}>Vakitten Önce Uyarı Süresi</Text>
-            </View>
-            <View style={styles.currentValuePill}>
-              <Text style={styles.currentValuePillText}>
-                {notificationPreferences.reminderMinutes === 0 ? "Tam Vaktinde" : `${notificationPreferences.reminderMinutes} dk önce`}
-              </Text>
-            </View>
-          </View>
-          <Text style={styles.blockDescription}>
-            Ezan vaktinden kaç dakika önce hazırlık hatırlatması gönderileceğini seçin.
-          </Text>
-
-          <View style={styles.presetChipsGrid}>
-            {REMINDER_PRESETS.map((minutes) => {
-              const isSelected = notificationPreferences.reminderMinutes === minutes;
-              return (
-                <Pressable
-                  key={minutes}
-                  accessibilityRole="button"
-                  disabled={isUpdatingNotifications}
-                  onPress={() => void applyGlobalPreferences({ reminderMinutes: minutes }, true)}
-                  style={({ pressed }) => [
-                    styles.presetChip,
-                    isSelected && styles.presetChipActive,
-                    pressed && styles.pressed
-                  ]}
-                >
-                  <Text style={[styles.presetChipText, isSelected && styles.presetChipTextActive]}>
-                    {minutes === 0 ? "Vaktinde" : `${minutes} dk`}
+            {/* 1. Ön Hatırlatma Süresi Seçici */}
+            <View style={styles.blockSection}>
+              <View style={styles.blockHeaderRow}>
+                <View style={styles.blockTitleWrap}>
+                  <Ionicons name="time-outline" size={18} color={colors.emerald} />
+                  <Text style={styles.blockTitle}>Vakitten Önce Uyarı Süresi</Text>
+                </View>
+                <View style={styles.currentValuePill}>
+                  <Text style={styles.currentValuePillText}>
+                    {notificationPreferences.reminderMinutes === 0 ? "Tam Vaktinde" : `${notificationPreferences.reminderMinutes} dk önce`}
                   </Text>
-                </Pressable>
-              );
-            })}
-          </View>
+                </View>
+              </View>
+              <Text style={styles.blockDescription}>
+                Ezan vaktinden kaç dakika önce hazırlık hatırlatması gönderileceğini seçin.
+              </Text>
 
-          {/* Tam Vakit Girdiğinde Bildirim Switch */}
-          <View style={styles.subToggleRow}>
-            <View style={styles.subToggleCopy}>
-              <Text style={styles.subToggleTitle}>Ezan Vakti Girdiğinde de Bildir</Text>
-              <Text style={styles.subToggleSubtitle}>Ön hatırlatmaya ek olarak tam ezan saatinde bildirim gönderir</Text>
-            </View>
-            <Switch
-              value={notificationPreferences.notifyOnTime !== false}
-              disabled={isUpdatingNotifications}
-              onValueChange={(val) => void applyGlobalPreferences({ notifyOnTime: val }, false)}
-              trackColor={{ false: colors.line, true: colors.emerald }}
-              thumbColor={colors.white}
-            />
-          </View>
-        </View>
-
-        <View style={styles.cardSeparator} />
-
-        {/* 2. Bildirim ve Ezan Sesi Seçimi */}
-        <View style={styles.blockSection}>
-          <View style={styles.blockTitleWrap}>
-            <Ionicons name="volume-high-outline" size={18} color={colors.emerald} />
-            <Text style={styles.blockTitle}>Varsayılan Bildirim & Ezan Sesi</Text>
-          </View>
-          <Text style={styles.blockDescription}>
-            Tüm vakitler için geçerli olan ana uyarı sesini belirleyin.
-          </Text>
-
-          <View style={styles.soundCardsList}>
-            {soundModeOptions.map((option) => {
-              const selected = notificationPreferences.soundMode === option.mode;
-              const iconMap: Record<PrayerNotificationSoundMode, keyof typeof Ionicons.glyphMap> = {
-                silent: "volume-mute",
-                default: "notifications",
-                adhan: "musical-notes"
-              };
-
-              return (
-                <Pressable
-                  key={option.mode}
-                  accessibilityRole="button"
-                  disabled={isUpdatingNotifications}
-                  onPress={() => void applyGlobalPreferences({ soundMode: option.mode }, true)}
-                  style={({ pressed }) => [
-                    styles.soundCardItem,
-                    selected && styles.soundCardItemActive,
-                    pressed && styles.pressed
-                  ]}
-                >
-                  <View style={[styles.soundCardIcon, selected && styles.soundCardIconActive]}>
-                    <Ionicons name={iconMap[option.mode]} size={20} color={selected ? colors.white : colors.emerald} />
-                  </View>
-                  <View style={styles.soundCardCopy}>
-                    <Text style={[styles.soundCardTitle, selected && styles.soundCardTitleActive]}>{option.label}</Text>
-                    <Text style={[styles.soundCardDesc, selected && styles.soundCardDescActive]}>{option.description}</Text>
-                  </View>
-                  <View style={[styles.radioCircle, selected && styles.radioCircleActive]}>
-                    {selected ? <View style={styles.radioInnerDot} /> : null}
-                  </View>
-                </Pressable>
-              );
-            })}
-          </View>
-
-          <AdhanTestPlayerButton />
-        </View>
-
-        <View style={styles.cardSeparator} />
-
-        {/* 3. Vakit Bazlı Ayrıntılı Özelleştirme Tablosu */}
-        <View style={styles.blockSection}>
-          <View style={styles.blockTitleWrap}>
-            <Ionicons name="options-outline" size={18} color={colors.emerald} />
-            <Text style={styles.blockTitle}>Vakitlere Göre Ayrıntılı Ayarlar</Text>
-          </View>
-          <Text style={styles.blockDescription}>
-            Her namaz vakti için bildirimi ayrı ayrı açıp kapatabilir, süresini ve sesini özelleştirebilirsiniz.
-          </Text>
-
-          <View style={styles.perPrayerList}>
-            {NOTIFIABLE_PRAYERS.map((prayerMeta) => {
-              const prayerTimeObj = prayerTimes.find((t) => t.id === prayerMeta.id);
-              const config: PerPrayerNotificationConfig = notificationPreferences.perPrayer?.[prayerMeta.id] ?? {
-                enabled: true,
-                reminderMinutes: notificationPreferences.reminderMinutes,
-                soundMode: notificationPreferences.soundMode
-              };
-              const isExpanded = expandedPrayerId === prayerMeta.id;
-
-              return (
-                <View key={prayerMeta.id} style={[styles.perPrayerCard, !config.enabled && styles.perPrayerCardMuted]}>
-                  <View style={styles.perPrayerTopRow}>
+              <View style={styles.presetChipsGrid}>
+                {REMINDER_PRESETS.map((minutes) => {
+                  const isSelected = notificationPreferences.reminderMinutes === minutes;
+                  return (
                     <Pressable
+                      key={minutes}
                       accessibilityRole="button"
-                      onPress={() => setExpandedPrayerId(isExpanded ? null : prayerMeta.id)}
-                      style={styles.perPrayerMainTouch}
+                      onPress={() => void applyGlobalPreferences({ reminderMinutes: minutes }, true)}
+                      style={[
+                        styles.presetChip,
+                        isSelected ? styles.presetChipActive : styles.presetChipInactive
+                      ]}
                     >
-                      <View style={[styles.perPrayerIcon, config.enabled && styles.perPrayerIconActive]}>
-                        <Ionicons name={prayerMeta.icon} size={18} color={config.enabled ? colors.emerald : colors.muted} />
+                      <Text style={[styles.presetChipText, isSelected ? styles.presetChipTextActive : styles.presetChipTextInactive]}>
+                        {minutes === 0 ? "Vaktinde" : `${minutes} dk`}
+                      </Text>
+                    </Pressable>
+                  );
+                })}
+              </View>
+
+              {/* Tam Vakit Girdiğinde Bildirim Switch */}
+              <View style={styles.subToggleRow}>
+                <View style={styles.subToggleCopy}>
+                  <Text style={styles.subToggleTitle}>Ezan Vakti Girdiğinde de Bildir</Text>
+                  <Text style={styles.subToggleSubtitle}>Ön hatırlatmaya ek olarak tam ezan saatinde bildirim gönderir</Text>
+                </View>
+                <Switch
+                  value={notificationPreferences.notifyOnTime !== false}
+                  onValueChange={(val) => void applyGlobalPreferences({ notifyOnTime: val }, false)}
+                  trackColor={{ false: colors.line, true: colors.emerald }}
+                  thumbColor={colors.white}
+                />
+              </View>
+            </View>
+
+            <View style={styles.cardSeparator} />
+
+            {/* 2. Bildirim ve Ezan Sesi Seçimi */}
+            <View style={styles.blockSection}>
+              <View style={styles.blockTitleWrap}>
+                <Ionicons name="volume-high-outline" size={18} color={colors.emerald} />
+                <Text style={styles.blockTitle}>Varsayılan Bildirim & Ezan Sesi</Text>
+              </View>
+              <Text style={styles.blockDescription}>
+                Tüm vakitler için geçerli olan ana uyarı sesini belirleyin.
+              </Text>
+
+              <View style={styles.soundCardsList}>
+                {soundModeOptions.map((option) => {
+                  const selected = notificationPreferences.soundMode === option.mode;
+                  const iconMap: Record<PrayerNotificationSoundMode, keyof typeof Ionicons.glyphMap> = {
+                    silent: "volume-mute",
+                    default: "notifications",
+                    adhan: "musical-notes"
+                  };
+
+                  return (
+                    <Pressable
+                      key={option.mode}
+                      accessibilityRole="button"
+                      onPress={() => void applyGlobalPreferences({ soundMode: option.mode }, true)}
+                      style={[
+                        styles.soundCardItem,
+                        selected ? styles.soundCardItemActive : styles.soundCardItemInactive
+                      ]}
+                    >
+                      <View style={[styles.soundCardIcon, selected ? styles.soundCardIconActive : styles.soundCardIconInactive]}>
+                        <Ionicons name={iconMap[option.mode]} size={20} color={selected ? colors.white : colors.emerald} />
                       </View>
-                      <View style={styles.perPrayerInfo}>
-                        <View style={styles.perPrayerNameRow}>
-                          <Text style={styles.perPrayerName}>{prayerMeta.label}</Text>
-                          {prayerTimeObj?.time ? (
-                            <View style={styles.perPrayerTimeBadge}>
-                              <Text style={styles.perPrayerTimeText}>{prayerTimeObj.time}</Text>
-                            </View>
-                          ) : null}
-                        </View>
-                        <Text style={styles.perPrayerSummary}>
-                          {config.enabled
-                            ? `${config.reminderMinutes === 0 ? "Tam vaktinde" : `${config.reminderMinutes} dk önce`} • ${SOUND_SHORT_LABELS[config.soundMode]}`
-                            : "Bu vakit için bildirim kapalı"}
+                      <View style={styles.soundCardCopy}>
+                        <Text style={[styles.soundCardTitle, selected ? styles.soundCardTitleActive : styles.soundCardTitleInactive]}>
+                          {option.label}
+                        </Text>
+                        <Text style={[styles.soundCardDesc, selected ? styles.soundCardDescActive : styles.soundCardDescInactive]}>
+                          {option.description}
                         </Text>
                       </View>
-                      <View style={styles.perPrayerChevron}>
-                        <Ionicons name={isExpanded ? "chevron-up" : "chevron-down"} size={18} color={colors.emerald} />
+                      <View style={[styles.radioCircle, selected && styles.radioCircleActive]}>
+                        {selected ? <View style={styles.radioInnerDot} /> : null}
                       </View>
                     </Pressable>
+                  );
+                })}
+              </View>
 
-                    <Switch
-                      value={config.enabled}
-                      disabled={isUpdatingNotifications}
-                      onValueChange={(val) => void updateSinglePrayerConfig(prayerMeta.id, { enabled: val })}
-                      trackColor={{ false: colors.line, true: colors.emerald }}
-                      thumbColor={colors.white}
-                    />
-                  </View>
+              <AdhanTestPlayerButton />
+            </View>
 
-                  {isExpanded && config.enabled ? (
-                    <View style={styles.perPrayerExpandedPanel}>
-                      <Text style={styles.perPrayerExpandedLabel}>Uyarı Süresi ({prayerMeta.label})</Text>
-                      <View style={styles.miniChipsRow}>
-                        {REMINDER_PRESETS.map((min) => {
-                          const active = config.reminderMinutes === min;
-                          return (
-                            <Pressable
-                              key={min}
-                              accessibilityRole="button"
-                              onPress={() => void updateSinglePrayerConfig(prayerMeta.id, { reminderMinutes: min })}
-                              style={[styles.miniChip, active && styles.miniChipActive]}
-                            >
-                              <Text style={[styles.miniChipText, active && styles.miniChipTextActive]}>
-                                {min === 0 ? "Vaktinde" : `${min} dk`}
-                              </Text>
-                            </Pressable>
-                          );
-                        })}
+            <View style={styles.cardSeparator} />
+
+            {/* 3. Vakit Bazlı Ayrıntılı Özelleştirme Tablosu */}
+            <View style={styles.blockSection}>
+              <View style={styles.blockTitleWrap}>
+                <Ionicons name="options-outline" size={18} color={colors.emerald} />
+                <Text style={styles.blockTitle}>Vakitlere Göre Ayrıntılı Ayarlar</Text>
+              </View>
+              <Text style={styles.blockDescription}>
+                Her namaz vakti için bildirimi ayrı ayrı açıp kapatabilir, süresini ve sesini özelleştirebilirsiniz.
+              </Text>
+
+              <View style={styles.perPrayerList}>
+                {NOTIFIABLE_PRAYERS.map((prayerMeta) => {
+                  const prayerTimeObj = prayerTimes.find((t) => t.id === prayerMeta.id);
+                  const config: PerPrayerNotificationConfig = notificationPreferences.perPrayer?.[prayerMeta.id] ?? {
+                    enabled: true,
+                    reminderMinutes: notificationPreferences.reminderMinutes,
+                    soundMode: notificationPreferences.soundMode
+                  };
+                  const isExpanded = expandedPrayerId === prayerMeta.id;
+
+                  return (
+                    <View key={prayerMeta.id} style={[styles.perPrayerCard, !config.enabled && styles.perPrayerCardMuted]}>
+                      <View style={styles.perPrayerTopRow}>
+                        <Pressable
+                          accessibilityRole="button"
+                          onPress={() => setExpandedPrayerId(isExpanded ? null : prayerMeta.id)}
+                          style={styles.perPrayerMainTouch}
+                        >
+                          <View style={[styles.perPrayerIcon, config.enabled && styles.perPrayerIconActive]}>
+                            <Ionicons name={prayerMeta.icon} size={18} color={config.enabled ? colors.emerald : colors.muted} />
+                          </View>
+                          <View style={styles.perPrayerInfo}>
+                            <View style={styles.perPrayerNameRow}>
+                              <Text style={styles.perPrayerName}>{prayerMeta.label}</Text>
+                              {prayerTimeObj?.time ? (
+                                <View style={styles.perPrayerTimeBadge}>
+                                  <Text style={styles.perPrayerTimeText}>{prayerTimeObj.time}</Text>
+                                </View>
+                              ) : null}
+                            </View>
+                            <Text style={styles.perPrayerSummary}>
+                              {config.enabled
+                                ? `${config.reminderMinutes === 0 ? "Tam vaktinde" : `${config.reminderMinutes} dk önce`} • ${SOUND_SHORT_LABELS[config.soundMode]}`
+                                : "Bu vakit için bildirim kapalı"}
+                            </Text>
+                          </View>
+                          <View style={styles.perPrayerChevron}>
+                            <Ionicons name={isExpanded ? "chevron-up" : "chevron-down"} size={18} color={colors.emerald} />
+                          </View>
+                        </Pressable>
+
+                        <Switch
+                          value={config.enabled}
+                          onValueChange={(val) => void updateSinglePrayerConfig(prayerMeta.id, { enabled: val })}
+                          trackColor={{ false: colors.line, true: colors.emerald }}
+                          thumbColor={colors.white}
+                        />
                       </View>
 
-                      <Text style={[styles.perPrayerExpandedLabel, { marginTop: 10 }]}>Bildirim Sesi ({prayerMeta.label})</Text>
-                      <View style={styles.miniChipsRow}>
-                        {(["silent", "default", "adhan"] as PrayerNotificationSoundMode[]).map((sMode) => {
-                          const active = config.soundMode === sMode;
-                          return (
-                            <Pressable
-                              key={sMode}
-                              accessibilityRole="button"
-                              onPress={() => void updateSinglePrayerConfig(prayerMeta.id, { soundMode: sMode })}
-                              style={[styles.miniSoundChip, active && styles.miniChipActive]}
-                            >
-                              <Text style={[styles.miniChipText, active && styles.miniChipTextActive]}>
-                                {SOUND_SHORT_LABELS[sMode]}
-                              </Text>
-                            </Pressable>
-                          );
-                        })}
-                      </View>
+                      {isExpanded && config.enabled ? (
+                        <View style={styles.perPrayerExpandedPanel}>
+                          <Text style={styles.perPrayerExpandedLabel}>Uyarı Süresi ({prayerMeta.label})</Text>
+                          <View style={styles.miniChipsRow}>
+                            {REMINDER_PRESETS.map((min) => {
+                              const active = Number(config.reminderMinutes) === min;
+                              return (
+                                <Pressable
+                                  key={min}
+                                  accessibilityRole="button"
+                                  hitSlop={6}
+                                  onPress={() => void updateSinglePrayerConfig(prayerMeta.id, { reminderMinutes: min })}
+                                  style={[styles.miniChip, active ? styles.miniChipActive : styles.miniChipInactive]}
+                                >
+                                  <Text style={[styles.miniChipText, active ? styles.miniChipTextActive : styles.miniChipTextInactive]}>
+                                    {min === 0 ? "Vaktinde" : `${min} dk`}
+                                  </Text>
+                                </Pressable>
+                              );
+                            })}
+                          </View>
+
+                          <Text style={[styles.perPrayerExpandedLabel, { marginTop: 12 }]}>Bildirim Sesi ({prayerMeta.label})</Text>
+                          <View style={styles.miniChipsRow}>
+                            {(["silent", "default", "adhan"] as PrayerNotificationSoundMode[]).map((sMode) => {
+                              const active = config.soundMode === sMode;
+                              return (
+                                <Pressable
+                                  key={sMode}
+                                  accessibilityRole="button"
+                                  hitSlop={6}
+                                  onPress={() => void updateSinglePrayerConfig(prayerMeta.id, { soundMode: sMode })}
+                                  style={[styles.miniSoundChip, active ? styles.miniChipActive : styles.miniChipInactive]}
+                                >
+                                  <Text style={[styles.miniChipText, active ? styles.miniChipTextActive : styles.miniChipTextInactive]}>
+                                    {SOUND_SHORT_LABELS[sMode]}
+                                  </Text>
+                                </Pressable>
+                              );
+                            })}
+                          </View>
+                        </View>
+                      ) : null}
                     </View>
-                  ) : null}
-                </View>
-              );
-            })}
+                  );
+                })}
+              </View>
+            </View>
           </View>
-        </View>
+        ) : null}
       </Card>
 
       {/* UYGULAMA VE DESTEK BÖLÜMÜ */}
@@ -505,41 +530,14 @@ export default function SettingsScreen() {
       </View>
 
       <Card style={styles.supportCard}>
-        <Pressable
-          accessibilityRole="button"
-          onPress={() => setAboutVisible(true)}
-          style={({ pressed }) => [styles.supportRow, pressed && styles.pressed]}
-        >
-          <View style={styles.supportIconWrap}>
-            <Ionicons name="information-circle" size={22} color={colors.emerald} />
-          </View>
-          <View style={styles.supportCopy}>
-            <Text style={styles.supportTitle}>Uygulama Hakkında</Text>
-            <Text style={styles.supportSubtitle}>Sürüm {APP_VERSION} • Lisans ve özellik bilgileri</Text>
-          </View>
-          <View style={styles.supportArrow}>
-            <Ionicons name="chevron-forward" size={18} color={colors.emerald} />
-          </View>
-        </Pressable>
-
-        <View style={styles.supportDivider} />
-
-        <Pressable
-          accessibilityRole="button"
-          onPress={() => void openContact()}
-          style={({ pressed }) => [styles.supportRow, pressed && styles.pressed]}
-        >
-          <View style={styles.supportIconWrap}>
-            <Ionicons name="mail" size={21} color={colors.emerald} />
-          </View>
-          <View style={styles.supportCopy}>
-            <Text style={styles.supportTitle}>İletişim ve Geri Bildirim</Text>
-            <Text style={styles.supportSubtitle}>{SUPPORT_EMAIL}</Text>
-          </View>
-          <View style={styles.supportArrow}>
-            <Ionicons name="open-outline" size={18} color={colors.emerald} />
-          </View>
-        </Pressable>
+        {supportItems.map((item, index) => (
+          <SettingsRow
+            key={item.id}
+            item={item}
+            isLast={index === supportItems.length - 1}
+            onPress={() => handleSupportPress(item.id)}
+          />
+        ))}
       </Card>
 
       <FeedbackModal modal={feedbackModal} onClose={closeFeedback} />
@@ -549,32 +547,38 @@ export default function SettingsScreen() {
 }
 
 function AdhanTestPlayerButton() {
-  const [isPlaying, setIsPlaying] = useState(false);
-  const player = useAudioPlayer(require("../assets/audio/adhan/adhan.ogg"));
+  const player = useAudioPlayer(require("../assets/audio/adhan/adhan.ogg"), { updateInterval: 250 });
+  const status = useAudioPlayerStatus(player);
+  const isPlaying = Boolean(status.playing);
+
+  useEffect(() => {
+    return () => {
+      try {
+        player.pause();
+      } catch {}
+    };
+  }, [player]);
 
   const togglePlay = () => {
     try {
       if (isPlaying) {
         player.pause();
-        setIsPlaying(false);
+        void player.seekTo(0);
       } else {
-        player.seekTo(0);
+        void player.seekTo(0);
         player.play();
-        setIsPlaying(true);
       }
-    } catch {
-      setIsPlaying(false);
-    }
+    } catch {}
   };
 
   return (
     <Pressable
       accessibilityRole="button"
       onPress={togglePlay}
-      style={({ pressed }) => [styles.testAudioBtn, isPlaying && styles.testAudioBtnPlaying, pressed && styles.pressed]}
+      style={[styles.testAudioBtn, isPlaying ? styles.testAudioBtnPlaying : styles.testAudioBtnIdle]}
     >
-      <Ionicons name={isPlaying ? "stop-circle" : "play-circle"} size={21} color={isPlaying ? colors.white : colors.emerald} />
-      <Text style={[styles.testAudioBtnText, isPlaying && styles.testAudioBtnTextPlaying]}>
+      <Ionicons name={isPlaying ? "stop-circle" : "play-circle"} size={22} color={isPlaying ? colors.white : colors.emerald} />
+      <Text style={[styles.testAudioBtnText, isPlaying ? styles.testAudioBtnTextPlaying : styles.testAudioBtnTextIdle]}>
         {isPlaying ? "Ezan Sesini Durdur" : "Ezan Sesini Dinle / Test Et"}
       </Text>
     </Pressable>
@@ -595,7 +599,7 @@ function FeedbackModal({ modal, onClose }: { modal: FeedbackModalState; onClose:
               accessibilityLabel="Kapat"
               hitSlop={12}
               onPress={onClose}
-              style={({ pressed }) => [styles.modalCloseButton, pressed && styles.pressed]}
+              style={styles.modalCloseButton}
             >
               <Ionicons name="close" size={20} color={colors.emerald} />
             </Pressable>
@@ -605,7 +609,7 @@ function FeedbackModal({ modal, onClose }: { modal: FeedbackModalState; onClose:
           </View>
           <Text style={styles.modalTitle}>{modal.title}</Text>
           <Text style={styles.modalMessage}>{modal.message}</Text>
-          <Pressable accessibilityRole="button" onPress={onClose} style={({ pressed }) => [styles.modalButton, pressed && styles.pressed]}>
+          <Pressable accessibilityRole="button" onPress={onClose} style={styles.modalButton}>
             <Text style={styles.modalButtonText}>Tamam</Text>
           </Pressable>
         </Pressable>
@@ -629,7 +633,7 @@ function AboutModal({ visible, onClose, version }: { visible: boolean; onClose: 
                 accessibilityLabel="Kapat"
                 hitSlop={14}
                 onPress={onClose}
-                style={({ pressed }) => [styles.aboutCloseButton, pressed && styles.pressed]}
+                style={styles.aboutCloseButton}
               >
                 <Ionicons name="close" size={22} color={colors.white} />
               </Pressable>
@@ -662,7 +666,7 @@ function AboutModal({ visible, onClose, version }: { visible: boolean; onClose: 
             <Pressable
               accessibilityRole="button"
               onPress={onClose}
-              style={({ pressed }) => [styles.aboutCloseFooterBtn, pressed && styles.pressed]}
+              style={styles.aboutCloseFooterBtn}
             >
               <Text style={styles.aboutCloseFooterBtnText}>Kapat</Text>
             </Pressable>
@@ -796,13 +800,19 @@ const styles = StyleSheet.create({
     marginTop: 2
   },
   reminderCenterCard: {
-    padding: 16,
-    gap: 16
+    padding: 16
   },
   masterSwitchRow: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 12
+    gap: 10
+  },
+  masterHeaderPressable: {
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+    minWidth: 0
   },
   masterIconBox: {
     width: 48,
@@ -821,7 +831,7 @@ const styles = StyleSheet.create({
   },
   masterTitle: {
     color: colors.ink,
-    fontSize: 17,
+    fontSize: 16,
     fontWeight: "900"
   },
   masterSubtitle: {
@@ -830,6 +840,18 @@ const styles = StyleSheet.create({
     lineHeight: 17,
     marginTop: 2,
     fontWeight: "700"
+  },
+  masterChevronBadge: {
+    width: 34,
+    height: 34,
+    borderRadius: 17,
+    backgroundColor: colors.emeraldSoft,
+    alignItems: "center",
+    justifyContent: "center"
+  },
+  expandedRemindersBody: {
+    marginTop: 14,
+    gap: 16
   },
   cardSeparator: {
     height: 1,
@@ -879,25 +901,28 @@ const styles = StyleSheet.create({
     marginTop: 2
   },
   presetChip: {
-    minWidth: "30%",
-    flex: 1,
-    minHeight: 40,
+    width: "31%",
+    minHeight: 42,
     borderRadius: radii.md,
-    backgroundColor: colors.cream,
-    borderWidth: 1,
-    borderColor: colors.line,
+    borderWidth: 1.5,
     alignItems: "center",
     justifyContent: "center",
-    paddingHorizontal: 10
+    paddingHorizontal: 8
+  },
+  presetChipInactive: {
+    backgroundColor: colors.white,
+    borderColor: colors.line
   },
   presetChipActive: {
     backgroundColor: colors.emerald,
     borderColor: colors.emerald
   },
   presetChipText: {
-    color: colors.ink,
     fontSize: 13,
     fontWeight: "900"
+  },
+  presetChipTextInactive: {
+    color: colors.ink
   },
   presetChipTextActive: {
     color: colors.white
@@ -905,7 +930,7 @@ const styles = StyleSheet.create({
   subToggleRow: {
     marginTop: 4,
     borderRadius: radii.md,
-    backgroundColor: colors.cream,
+    backgroundColor: colors.white,
     borderWidth: 1,
     borderColor: colors.line,
     paddingHorizontal: 12,
@@ -935,51 +960,61 @@ const styles = StyleSheet.create({
     marginTop: 2
   },
   soundCardItem: {
+    width: "100%",
     borderRadius: radii.md,
-    backgroundColor: colors.cream,
-    borderWidth: 1,
-    borderColor: colors.line,
-    padding: 12,
+    borderWidth: 1.5,
+    paddingHorizontal: 12,
+    paddingVertical: 12,
     flexDirection: "row",
     alignItems: "center",
     gap: 12
   },
+  soundCardItemInactive: {
+    backgroundColor: colors.white,
+    borderColor: colors.line
+  },
   soundCardItemActive: {
-    backgroundColor: colors.emerald,
+    backgroundColor: colors.emeraldSoft,
     borderColor: colors.emerald
   },
   soundCardIcon: {
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: colors.emeraldSoft,
     alignItems: "center",
     justifyContent: "center"
   },
+  soundCardIconInactive: {
+    backgroundColor: colors.emeraldSoft
+  },
   soundCardIconActive: {
-    backgroundColor: "rgba(255,255,255,0.18)"
+    backgroundColor: colors.emerald
   },
   soundCardCopy: {
     flex: 1,
     minWidth: 0
   },
   soundCardTitle: {
-    color: colors.ink,
     fontSize: 14,
     fontWeight: "900"
   },
+  soundCardTitleInactive: {
+    color: colors.ink
+  },
   soundCardTitleActive: {
-    color: colors.white
+    color: colors.emerald
   },
   soundCardDesc: {
-    color: colors.muted,
     fontSize: 11,
     lineHeight: 16,
     marginTop: 2,
     fontWeight: "700"
   },
+  soundCardDescInactive: {
+    color: colors.muted
+  },
   soundCardDescActive: {
-    color: "rgba(255,255,255,0.82)"
+    color: colors.ink
   },
   radioCircle: {
     width: 22,
@@ -991,35 +1026,39 @@ const styles = StyleSheet.create({
     justifyContent: "center"
   },
   radioCircleActive: {
-    borderColor: colors.gold
+    borderColor: colors.emerald
   },
   radioInnerDot: {
-    width: 10,
-    height: 10,
-    borderRadius: 5,
-    backgroundColor: colors.gold
+    width: 11,
+    height: 11,
+    borderRadius: 6,
+    backgroundColor: colors.emerald
   },
   testAudioBtn: {
     marginTop: 4,
     minHeight: 46,
     borderRadius: radii.md,
-    backgroundColor: colors.emeraldSoft,
-    borderWidth: 1,
-    borderColor: "rgba(7,94,71,0.22)",
+    borderWidth: 1.5,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
     gap: 8,
     paddingHorizontal: 14
   },
+  testAudioBtnIdle: {
+    backgroundColor: colors.emeraldSoft,
+    borderColor: "rgba(7,94,71,0.28)"
+  },
   testAudioBtnPlaying: {
-    backgroundColor: colors.emerald,
-    borderColor: colors.emerald
+    backgroundColor: "#B91C1C",
+    borderColor: "#991B1B"
   },
   testAudioBtnText: {
-    color: colors.emerald,
     fontSize: 13,
     fontWeight: "900"
+  },
+  testAudioBtnTextIdle: {
+    color: colors.emerald
   },
   testAudioBtnTextPlaying: {
     color: colors.white
@@ -1112,29 +1151,35 @@ const styles = StyleSheet.create({
     color: colors.ink,
     fontSize: 12,
     fontWeight: "900",
-    marginBottom: 6
+    marginBottom: 8
   },
   miniChipsRow: {
     flexDirection: "row",
     flexWrap: "wrap",
-    gap: 6
+    gap: 8
   },
   miniChip: {
+    minWidth: "28%",
+    minHeight: 36,
     paddingHorizontal: 10,
     paddingVertical: 6,
     borderRadius: radii.sm,
-    backgroundColor: colors.cream,
-    borderWidth: 1,
-    borderColor: colors.line
+    borderWidth: 1.5,
+    alignItems: "center",
+    justifyContent: "center"
   },
   miniSoundChip: {
     flex: 1,
+    minHeight: 38,
     alignItems: "center",
+    justifyContent: "center",
     paddingHorizontal: 10,
     paddingVertical: 7,
     borderRadius: radii.sm,
+    borderWidth: 1.5
+  },
+  miniChipInactive: {
     backgroundColor: colors.cream,
-    borderWidth: 1,
     borderColor: colors.line
   },
   miniChipActive: {
@@ -1142,59 +1187,18 @@ const styles = StyleSheet.create({
     borderColor: colors.emerald
   },
   miniChipText: {
-    color: colors.ink,
-    fontSize: 11,
+    fontSize: 12,
     fontWeight: "900"
+  },
+  miniChipTextInactive: {
+    color: colors.ink
   },
   miniChipTextActive: {
     color: colors.white
   },
   supportCard: {
-    padding: 6
-  },
-  supportRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 12,
-    paddingHorizontal: 10,
-    paddingVertical: 12,
-    borderRadius: radii.md
-  },
-  supportIconWrap: {
-    width: 42,
-    height: 42,
-    borderRadius: 21,
-    backgroundColor: colors.emeraldSoft,
-    alignItems: "center",
-    justifyContent: "center"
-  },
-  supportCopy: {
-    flex: 1,
-    minWidth: 0
-  },
-  supportTitle: {
-    color: colors.ink,
-    fontSize: 15,
-    fontWeight: "900"
-  },
-  supportSubtitle: {
-    color: colors.muted,
-    fontSize: 12,
-    marginTop: 2,
-    fontWeight: "700"
-  },
-  supportArrow: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    backgroundColor: colors.cream,
-    alignItems: "center",
-    justifyContent: "center"
-  },
-  supportDivider: {
-    height: 1,
-    backgroundColor: colors.line,
-    marginHorizontal: 10
+    paddingVertical: 2,
+    paddingHorizontal: 0
   },
   modalBackdrop: {
     flex: 1,
@@ -1370,8 +1374,5 @@ const styles = StyleSheet.create({
     color: colors.white,
     fontSize: 14,
     fontWeight: "900"
-  },
-  pressed: {
-    opacity: 0.75
   }
 });

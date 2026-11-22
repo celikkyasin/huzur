@@ -18,6 +18,7 @@ type LeaderboardItem = RemoteLeaderboardItem & {
 
 export default function RewardsScreen() {
   const [rewardConfig, setRewardConfig] = useState<RewardConfig | null>(null);
+  const [rulesExpanded, setRulesExpanded] = useState(false);
   const [claimFormVisible, setClaimFormVisible] = useState(false);
   const [isSubmittingClaim, setIsSubmittingClaim] = useState(false);
   const [claimFullName, setClaimFullName] = useState("");
@@ -209,69 +210,76 @@ export default function RewardsScreen() {
         ) : null}
 
         <View style={styles.rewardRulesPanel}>
-          <View style={styles.rewardRulesHeader}>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityState={{ expanded: rulesExpanded }}
+            onPress={() => setRulesExpanded((current) => !current)}
+            style={styles.rewardRulesHeader}
+          >
             <View style={styles.rewardRulesTitleCol}>
               <Text style={styles.rewardRulesKicker}>PUAN KAZANIMLARI</Text>
               <Text style={styles.rewardRulesTitle}>Puanlar nasıl kazanılır?</Text>
             </View>
             <View style={styles.rewardRulesBadge}>
-              <Ionicons name="sparkles" size={18} color={colors.gold} />
+              <Ionicons name={rulesExpanded ? "chevron-up" : "chevron-down"} size={20} color={colors.emerald} />
             </View>
-          </View>
+          </Pressable>
 
-          <View style={styles.rewardRulesList}>
-            <View style={styles.rewardRuleRow}>
-              <View style={styles.rewardRuleIcon}>
-                <Ionicons name="checkmark-done-circle" size={20} color={colors.emerald} />
+          {rulesExpanded ? (
+            <View style={styles.rewardRulesList}>
+              <View style={styles.rewardRuleRow}>
+                <View style={styles.rewardRuleIcon}>
+                  <Ionicons name="checkmark-done-circle" size={20} color={colors.emerald} />
+                </View>
+                <View style={styles.rewardRuleCopy}>
+                  <Text style={styles.rewardRuleTitle}>Namaz Takibi</Text>
+                  <Text style={styles.rewardRuleText}>Kılınan her vakit için +2 puan, 5 vaktin tamamlandığı gün +10 bonus puan</Text>
+                </View>
+                <View style={styles.rewardRulePill}>
+                  <Text style={styles.rewardRulePillText}>+2 / +10</Text>
+                </View>
               </View>
-              <View style={styles.rewardRuleCopy}>
-                <Text style={styles.rewardRuleTitle}>Namaz Takibi</Text>
-                <Text style={styles.rewardRuleText}>Kılınan her vakit için +2 puan, 5 vaktin tamamlandığı gün +10 bonus puan</Text>
-              </View>
-              <View style={styles.rewardRulePill}>
-                <Text style={styles.rewardRulePillText}>+2 / +10</Text>
-              </View>
-            </View>
 
-            <View style={styles.rewardRuleRow}>
-              <View style={styles.rewardRuleIcon}>
-                <Ionicons name="finger-print" size={20} color={colors.emerald} />
+              <View style={styles.rewardRuleRow}>
+                <View style={styles.rewardRuleIcon}>
+                  <Ionicons name="finger-print" size={20} color={colors.emerald} />
+                </View>
+                <View style={styles.rewardRuleCopy}>
+                  <Text style={styles.rewardRuleTitle}>Zikirmatik</Text>
+                  <Text style={styles.rewardRuleText}>33 zikir tamamlandığında +3 puan, 99 zikir tamamlandığında toplam +10 puan</Text>
+                </View>
+                <View style={styles.rewardRulePill}>
+                  <Text style={styles.rewardRulePillText}>+3 / +10</Text>
+                </View>
               </View>
-              <View style={styles.rewardRuleCopy}>
-                <Text style={styles.rewardRuleTitle}>Zikirmatik</Text>
-                <Text style={styles.rewardRuleText}>33 zikir tamamlandığında +3 puan, 99 zikir tamamlandığında toplam +10 puan</Text>
-              </View>
-              <View style={styles.rewardRulePill}>
-                <Text style={styles.rewardRulePillText}>+3 / +10</Text>
-              </View>
-            </View>
 
-            <View style={styles.rewardRuleRow}>
-              <View style={styles.rewardRuleIcon}>
-                <Ionicons name="headset" size={20} color={colors.emerald} />
+              <View style={styles.rewardRuleRow}>
+                <View style={styles.rewardRuleIcon}>
+                  <Ionicons name="headset" size={20} color={colors.emerald} />
+                </View>
+                <View style={styles.rewardRuleCopy}>
+                  <Text style={styles.rewardRuleTitle}>Kur'an Dinleme & Hatim</Text>
+                  <Text style={styles.rewardRuleText}>Sesli Kur'an dinlenen her dakika için +1 puan</Text>
+                </View>
+                <View style={styles.rewardRulePill}>
+                  <Text style={styles.rewardRulePillText}>+1 / dk</Text>
+                </View>
               </View>
-              <View style={styles.rewardRuleCopy}>
-                <Text style={styles.rewardRuleTitle}>Kur'an Dinleme & Hatim</Text>
-                <Text style={styles.rewardRuleText}>Sesli Kur'an dinlenen her dakika için +1 puan</Text>
-              </View>
-              <View style={styles.rewardRulePill}>
-                <Text style={styles.rewardRulePillText}>+1 / dk</Text>
-              </View>
-            </View>
 
-            <View style={styles.rewardRuleRow}>
-              <View style={styles.rewardRuleIcon}>
-                <Ionicons name="share-social" size={20} color={colors.emerald} />
-              </View>
-              <View style={styles.rewardRuleCopy}>
-                <Text style={styles.rewardRuleTitle}>Cuma Mesajı Paylaşımı</Text>
-                <Text style={styles.rewardRuleText}>Cuma günleri yapılan ilk mesaj paylaşımı için +2 puan</Text>
-              </View>
-              <View style={styles.rewardRulePill}>
-                <Text style={styles.rewardRulePillText}>+2</Text>
+              <View style={styles.rewardRuleRow}>
+                <View style={styles.rewardRuleIcon}>
+                  <Ionicons name="share-social" size={20} color={colors.emerald} />
+                </View>
+                <View style={styles.rewardRuleCopy}>
+                  <Text style={styles.rewardRuleTitle}>Cuma Mesajı Paylaşımı</Text>
+                  <Text style={styles.rewardRuleText}>Cuma günleri yapılan ilk mesaj paylaşımı için +2 puan</Text>
+                </View>
+                <View style={styles.rewardRulePill}>
+                  <Text style={styles.rewardRulePillText}>+2</Text>
+                </View>
               </View>
             </View>
-          </View>
+          ) : null}
         </View>
 
         <RewardedAdPointsCard />
@@ -579,8 +587,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    gap: 12,
-    marginBottom: 14
+    gap: 12
   },
   rewardRulesTitleCol: {
     flex: 1,
@@ -606,9 +613,13 @@ const styles = StyleSheet.create({
     borderRadius: radii.round,
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: colors.goldSoft
+    backgroundColor: colors.emeraldSoft
   },
   rewardRulesList: {
+    marginTop: 14,
+    paddingTop: 14,
+    borderTopWidth: 1,
+    borderTopColor: colors.line,
     gap: 10
   },
   rewardRuleRow: {
